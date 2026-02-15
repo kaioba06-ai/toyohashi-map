@@ -1,343 +1,299 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <link rel="apple-touch-icon" href="icon.png">
     <meta charset="UTF-8">
-    <title>愛知スーパーマップ - 豊橋版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>豊橋お買い物マップ</title>
+    
+    <link rel="apple-touch-icon" href="icon.png">
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        /* 基本レイアウト */
-        #map { height: 100vh; width: 100%; }
-        body { margin: 0; padding: 0; font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; }
+        #map { height: 100vh; width: 100%; z-index: 1; }
+        body { margin: 0; padding: 0; font-family: sans-serif; overflow: hidden; background: #f0f0f0; }
 
-        /* サイドメニュー（絞り込み） */
+        /* --- ボタンの設定：右上に固定 --- */
+        #menu-toggle {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            z-index: 3000; /* 最前面 */
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 18px;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        /* --- メニューの設定：ボタンの下に重ならないように配置 --- */
         #menu {
             position: fixed;
-            top: 100px; /* ズームボタンとの重なり防止 */
-            left: 10px;
-            z-index: 1000;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 12px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            top: 75px; /* ボタン(約50px) + 余白分だけ下に配置 */
+            right: 15px;
+            z-index: 2000;
+            background: rgba(255, 255, 255, 0.98);
+            width: 240px;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
             max-height: 70vh;
             overflow-y: auto;
-            width: 170px;
-            font-size: 13px;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            
+            /* 初期状態：隠す */
+            opacity: 0;
+            transform: translateY(-10px);
+            pointer-events: none;
         }
-        .menu-item { margin-bottom: 6px; display: block; cursor: pointer; }
-        .menu-item input { margin-right: 8px; vertical-align: middle; }
 
-        /* ポップアップの見た目 */
-        .popup-content { line-height: 1.6; min-width: 220px; }
+        /* 表示状態 */
+        #menu.show {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .menu-item { margin-bottom: 10px; display: block; font-size: 14px; cursor: pointer; }
+        .menu-item input { transform: scale(1.1); margin-right: 8px; vertical-align: middle; }
         
-        /* 現在地ボタン */
+        #search-box {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        #search-results { 
+            background: #f8f9fa; 
+            border-radius: 8px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        /* 現在地ボタン（左下） */
         .location-btn {
             position: fixed;
-            bottom: 25px;
-            right: 25px;
+            bottom: 30px;
+            left: 20px;
             z-index: 1000;
             background: white;
-            padding: 10px;
-            border: 2px solid #ccc;
             border-radius: 50%;
-            cursor: pointer;
-            width: 55px;
-            height: 55px;
-            font-size: 26px;
+            width: 65px;
+            height: 65px;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+            font-size: 32px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border: 3px solid #1a73e8;
         }
-        /* ルート検索ボタンのスタイル */
+
         .route-btn {
-            display: inline-block;
+            display: block;
             margin-top: 10px;
-            padding: 8px 12px;
-            background-color: #1a73e8;
+            padding: 15px;
+            background: #1a73e8;
             color: white !important;
-            text-decoration: none;
-            border-radius: 4px;
-            font-size: 0.85em;
-            font-weight: bold;
             text-align: center;
-        }
-        .route-btn:hover {
-            background-color: #1557b0;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 15px;
         }
     </style>
 </head>
 <body>
 
+<button id="menu-toggle" onclick="toggleMenu()">🔍 検索・絞り込み</button>
+
 <div id="menu">
-    <strong style="display:block; margin-bottom:8px; border-bottom: 2px solid #eee; padding-bottom: 4px;">🔍 店舗検索</strong>
-    <input type="text" id="search-box" placeholder="店名を入力..." style="width: 100%; padding: 5px; margin-bottom: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+    <strong style="display:block; margin-bottom:8px;">🔍 店舗名で探す</strong>
+    <input type="text" id="search-box" placeholder="店名を検索...">
+    <div id="search-results"></div>
     
-    <div id="search-results" style="max-height: 150px; overflow-y: auto; font-size: 0.85em; background: #f9f9f9; border-radius: 4px; margin-bottom: 10px;"></div>
+    <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
     
-    <strong style="display:block; margin-bottom:8px; border-bottom: 2px solid #eee; padding-bottom: 4px;">📂 カテゴリ絞り込み</strong>
+    <strong style="display:block; margin-bottom:8px;">📂 カテゴリ絞り込み</strong>
     <div id="category-filters"></div>
 </div>
 
-    <div id="map"></div>
+<div id="map"></div>
+<div class="location-btn" onclick="goToMyLocation()">📍</div>
 
-    <div class="location-btn" onclick="goToMyLocation()" title="現在地を表示">📍</div>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        // 1. 地図の初期設定（豊橋市中心）
-        const map = L.map('map').setView([34.7628, 137.3817], 14);
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    function toggleMenu() {
+        document.getElementById('menu').classList.toggle('show');
+    }
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
+    const map = L.map('map', { zoomControl: false }).setView([34.7628, 137.3817], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    const categoryColors = {
+        "スーパー": "#ff4757", "業務スーパー": "#2f3542", "ドラッグストア": "#2ed573",
+        "JA": "#ffa502", "直販所": "#7bed9f", "八百屋": "#ff6348", "果物屋": "#eccc68",
+        "魚屋": "#1e90ff", "ブラジル食品": "#3742fa", "ベトナム食品": "#ff7f50", "食品倉庫": "#a4b0be"
+    };
 
 // 2. 店舗データ（整理済み全リスト）
-        const stores = [
-            // --- 価格詳細あり店舗 ---
-            { "name": "スーパーマーケットバロー豊橋店", "lat": 34.75506494, "lng": 137.3934868, "info1": "ルビットアプリチェック ポイント貯まる！", "info2": "総菜パン１００円！", "category": "スーパー", "price": "🐷豚こま L:118 SM:128 / 🐔むね:88 もも:108 ささみ:98 / 🥚たまご:278 / 🧊とうふ(350g):58 / 📜あぶらあげ(8枚):98" },
-            { "name": "ラ・ムー 豊橋店", "lat": 34.7527907, "lng": 137.3725441, "info1": "何もかも安い", "info2": "弁当300円", "category": "スーパー", "price": "🐷豚こま L:96 SM:109 / 🐔むね:68~79 もも:94~119 / 🥚たまご:289 / 🧊とうふ(400g):49 (320g):42 / 🍜うどん・やきそば:18 中華麺:29 / 📜あぶらあげ(8枚):89 (12枚):128" },
-            { "name": "マックスバリュ豊橋橋良店", "lat": 34.74103063, "lng": 137.3758915, "info1": "豆腐と油揚げが安い", "info2": "２０日３０日5％オフ", "category": "スーパー", "price": "🐷豚こま:98 / 🐔むね:75~78 もも:95~98 / 🐂🐷牛豚合挽:98~158 / 🧊とうふ(300g):41 / 📜あぶらあげ(8枚):81 / 🍜うどん・やきそば:27" },
-            { "name": "イオン 豊橋南店", "lat": 34.71087347, "lng": 137.388593, "info1": "WAONポイントが貯まる！", "info2": "２０日３０日5％オフ", "category": "スーパー", "price": "🐷豚こま:128 / 🐔むね(皮無):98 もも:108~118 / 🐂🐷豚みんち:138 / 🧊とうふ(400g):58 / 📜あぶらあげ:118 / 🍜うどん:27" },
-            { "name": "カネスエ 豊橋中浜店", "lat": 34.73963821, "lng": 137.3756906, "info1": "とにかく安い", "info2": "メンバーズカードで現金払時3％オフ", "category": "スーパー", "price": "🐷豚こま:85~97 / 🐔むね:69~75 もも:95~99 ささみ:87 / 🥚たまご:237 / 🧊とうふ(320g):38 / 🍜うどん・やきそば:22 / 📜あぶらあげ:79" },
+const stores = [
+// --- 価格詳細あり店舗 ---
+{ "name": "スーパーマーケットバロー豊橋店", "lat": 34.75506494, "lng": 137.3934868, "info1": "ルビットアプリチェック ポイント貯まる！", "info2": "総菜パン１００円！", "category": "スーパー", "price": "🐷豚こま L:118 SM:128 / 🐔むね:88 もも:108 ささみ:98 / 🥚たまご:278 / 🧊とうふ(350g):58 / 📜あぶらあげ(8枚):98" },
+{ "name": "ラ・ムー 豊橋店", "lat": 34.7527907, "lng": 137.3725441, "info1": "何もかも安い", "info2": "弁当300円", "category": "スーパー", "price": "🐷豚こま L:96 SM:109 / 🐔むね:68~79 もも:94~119 / 🥚たまご:289 / 🧊とうふ(400g):49 (320g):42 / 🍜うどん・やきそば:18 中華麺:29 / 📜あぶらあげ(8枚):89 (12枚):128" },
+{ "name": "マックスバリュ豊橋橋良店", "lat": 34.74103063, "lng": 137.3758915, "info1": "豆腐と油揚げが安い", "info2": "２０日３０日5％オフ", "category": "スーパー", "price": "🐷豚こま:98 / 🐔むね:75~78 もも:95~98 / 🐂🐷牛豚合挽:98~158 / 🧊とうふ(300g):41 / 📜あぶらあげ(8枚):81 / 🍜うどん・やきそば:27" },
+{ "name": "イオン 豊橋南店", "lat": 34.71087347, "lng": 137.388593, "info1": "WAONポイントが貯まる！", "info2": "２０日３０日5％オフ", "category": "スーパー", "price": "🐷豚こま:128 / 🐔むね(皮無):98 もも:108~118 / 🐂🐷豚みんち:138 / 🧊とうふ(400g):58 / 📜あぶらあげ:118 / 🍜うどん:27" },
+{ "name": "カネスエ 豊橋中浜店", "lat": 34.73963821, "lng": 137.3756906, "info1": "とにかく安い", "info2": "メンバーズカードで現金払時3％オフ", "category": "スーパー", "price": "🐷豚こま:85~97 / 🐔むね:69~75 もも:95~99 ささみ:87 / 🥚たまご:237 / 🧊とうふ(320g):38 / 🍜うどん・やきそば:22 / 📜あぶらあげ:79" },
 
-            // --- JA・産直 ---
-            { "name": "ＪＡ豊橋 Ａコープ 産直プラザ二川", "lat": 34.72824464, "lng": 137.4590064, "info1": "-", "info2": "-", "category": "JA" },
-            { "name": "JAファーマーズマーケット吉田方店", "lat": 34.77288067, "lng": 137.3711233, "info1": "-", "info2": "-", "category": "JA" },
-            { "name": "ＪＡグリーンセンター 磯辺", "lat": 34.73167932, "lng": 137.3709979, "info1": "-", "info2": "-", "category": "JA" },
+// --- JA・産直 ---
+{ "name": "ＪＡ豊橋 Ａコープ 産直プラザ二川", "lat": 34.72824464, "lng": 137.4590064, "info1": "-", "info2": "-", "category": "JA" },
+{ "name": "JAファーマーズマーケット吉田方店", "lat": 34.77288067, "lng": 137.3711233, "info1": "-", "info2": "-", "category": "JA" },
+{ "name": "ＪＡグリーンセンター 磯辺", "lat": 34.73167932, "lng": 137.3709979, "info1": "-", "info2": "-", "category": "JA" },
 
-            // --- スーパー（追加分） ---
-            { "name": "フードショップコロナ", "lat": 34.73963163, "lng": 137.3994956, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "クックマート 牛川店", "lat": 34.77822998, "lng": 137.4205802, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "フードマーケット マム 牛川店", "lat": 34.78190537, "lng": 137.4238281, "info1": "楽天ポイント貯まる", "info2": "-", "category": "スーパー" },
-            { "name": "アピタ向山店", "lat": 34.75552701, "lng": 137.4017918, "info1": "立体駐車場有", "info2": "-", "category": "スーパー" },
-            { "name": "ニューライフ フジ たか丘店", "lat": 34.77560081, "lng": 137.4267462, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "サンヨネ 東店", "lat": 34.76128794, "lng": 137.414644, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "サンヨネ 魚町本店", "lat": 34.76768673, "lng": 137.3885217, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "スーパーマーケットバロー豊橋菰口店", "lat": 34.77087713, "lng": 137.3738837, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "ビオ・あつみ エピスリー豊橋", "lat": 34.74993458, "lng": 137.4103618, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "クックマート 飯村店", "lat": 34.74838307, "lng": 137.430532, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "クックマート東脇店", "lat": 34.7544479, "lng": 137.3683476, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "エクボスタイルこもぐち", "lat": 34.74914356, "lng": 137.3728701, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "MEGAドン・キホーテ 豊橋店", "lat": 34.744081, "lng": 137.3720384, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "フードマーケット マム 牧野店", "lat": 34.73392441, "lng": 137.3998475, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "クックマート ユーアイ店", "lat": 34.73455923, "lng": 137.3954701, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "オークワ 豊橋ミラまち店", "lat": 34.73060914, "lng": 137.3887753, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "ヤマナカ 二川店", "lat": 34.7291278, "lng": 137.4307466, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "遠鉄ストア 豊橋曙店", "lat": 34.72630614, "lng": 137.3987317, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "サンヨネ 高師店", "lat": 34.72454255, "lng": 137.3874021, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "ドミー 飯村店", "lat": 34.74505075, "lng": 137.4269056, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "ニューライフフジ 二川店", "lat": 34.72371457, "lng": 137.4506366, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "たつみストアー 二川店", "lat": 34.72807687, "lng": 137.4549236, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "DUY THUỶ MART", "lat": 34.72641395, "lng": 137.4281978, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "ニューライフフジ 西口店", "lat": 34.74411626, "lng": 137.4117133, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "たつみストアー大清水店", "lat": 34.70108326, "lng": 137.3585841, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "マックスバリュ豊橋南店", "lat": 34.70073044, "lng": 137.3559233, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "ほなみ 食彩広場大清水店", "lat": 34.69720214, "lng": 137.3596999, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "ピアゴ大清水店", "lat": 34.68718093, "lng": 137.3613306, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "マックスバリュ 豊橋富士見台店", "lat": 34.68301684, "lng": 137.3627039, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "ドミーつつじが丘店", "lat": 34.74487248, "lng": 137.4017445, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "スーパーマーケットバロー牟呂店", "lat": 34.74839499, "lng": 137.3617328, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "マルマサ 牟呂店", "lat": 34.75074324, "lng": 137.3587728, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "ヤマナカ 赤岩フランテ館", "lat": 34.76531502, "lng": 137.427249, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "ヤマナカ 汐田フランテ館", "lat": 34.75300757, "lng": 137.3777579, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "ヤマナカ 豊橋フランテ館", "lat": 34.73767069, "lng": 137.3766088, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "ヤマナカ 西羽田店", "lat": 34.76348175, "lng": 137.371974, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "フレッシュマートテラダ", "lat": 34.76181733, "lng": 137.4203225, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "ドミー 渡津店", "lat": 34.77082333, "lng": 137.3559812, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "フードショップ コロナ小坂井店", "lat": 34.80022632, "lng": 137.3538818, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "エクボスタイルあけぼの", "lat": 34.7270607, "lng": 137.4021882, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "エクボスタイルはしら", "lat": 34.7492163, "lng": 137.3732571, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "ニューライフフジ 本部", "lat": 34.75447394, "lng": 137.4313896, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "フードオアシスあつみ 山田店", "lat": 34.74511655, "lng": 137.3920453, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "コープ岩田", "lat": 34.75389435, "lng": 137.4197032, "info1": "-", "info2": "-", "category": "スーパー" },
-            { "name": "ニューライフフジ 岩田店", "lat": 34.75442907, "lng": 137.4313119, "info1": "-", "info2": "-", "category": "スーパー" },
+// --- スーパー（追加分） ---
+{ "name": "フードショップコロナ", "lat": 34.73963163, "lng": 137.3994956, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "クックマート 牛川店", "lat": 34.77822998, "lng": 137.4205802, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "フードマーケット マム 牛川店", "lat": 34.78190537, "lng": 137.4238281, "info1": "楽天ポイント貯まる", "info2": "-", "category": "スーパー" },
+{ "name": "アピタ向山店", "lat": 34.75552701, "lng": 137.4017918, "info1": "立体駐車場有", "info2": "-", "category": "スーパー" },
+{ "name": "ニューライフ フジ たか丘店", "lat": 34.77560081, "lng": 137.4267462, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "サンヨネ 東店", "lat": 34.76128794, "lng": 137.414644, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "サンヨネ 魚町本店", "lat": 34.76768673, "lng": 137.3885217, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "スーパーマーケットバロー豊橋菰口店", "lat": 34.77087713, "lng": 137.3738837, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "ビオ・あつみ エピスリー豊橋", "lat": 34.74993458, "lng": 137.4103618, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "クックマート 飯村店", "lat": 34.74838307, "lng": 137.430532, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "クックマート東脇店", "lat": 34.7544479, "lng": 137.3683476, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "エクボスタイルこもぐち", "lat": 34.74914356, "lng": 137.3728701, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "MEGAドン・キホーテ 豊橋店", "lat": 34.744081, "lng": 137.3720384, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "フードマーケット マム 牧野店", "lat": 34.73392441, "lng": 137.3998475, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "クックマート ユーアイ店", "lat": 34.73455923, "lng": 137.3954701, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "オークワ 豊橋ミラまち店", "lat": 34.73060914, "lng": 137.3887753, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "ヤマナカ 二川店", "lat": 34.7291278, "lng": 137.4307466, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "遠鉄ストア 豊橋曙店", "lat": 34.72630614, "lng": 137.3987317, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "サンヨネ 高師店", "lat": 34.72454255, "lng": 137.3874021, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "ドミー 飯村店", "lat": 34.74505075, "lng": 137.4269056, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "ニューライフフジ 二川店", "lat": 34.72371457, "lng": 137.4506366, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "たつみストアー 二川店", "lat": 34.72807687, "lng": 137.4549236, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "DUY THUỶ MART", "lat": 34.72641395, "lng": 137.4281978, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "ニューライフフジ 西口店", "lat": 34.74411626, "lng": 137.4117133, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "たつみストアー大清水店", "lat": 34.70108326, "lng": 137.3585841, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "マックスバリュ豊橋南店", "lat": 34.70073044, "lng": 137.3559233, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "ほなみ 食彩広場大清水店", "lat": 34.69720214, "lng": 137.3596999, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "ピアゴ大清水店", "lat": 34.68718093, "lng": 137.3613306, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "マックスバリュ 豊橋富士見台店", "lat": 34.68301684, "lng": 137.3627039, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "ドミーつつじが丘店", "lat": 34.74487248, "lng": 137.4017445, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "スーパーマーケットバロー牟呂店", "lat": 34.74839499, "lng": 137.3617328, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "マルマサ 牟呂店", "lat": 34.75074324, "lng": 137.3587728, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "ヤマナカ 赤岩フランテ館", "lat": 34.76531502, "lng": 137.427249, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "ヤマナカ 汐田フランテ館", "lat": 34.75300757, "lng": 137.3777579, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "ヤマナカ 豊橋フランテ館", "lat": 34.73767069, "lng": 137.3766088, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "ヤマナカ 西羽田店", "lat": 34.76348175, "lng": 137.371974, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "フレッシュマートテラダ", "lat": 34.76181733, "lng": 137.4203225, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "ドミー 渡津店", "lat": 34.77082333, "lng": 137.3559812, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "フードショップ コロナ小坂井店", "lat": 34.80022632, "lng": 137.3538818, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "エクボスタイルあけぼの", "lat": 34.7270607, "lng": 137.4021882, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "エクボスタイルはしら", "lat": 34.7492163, "lng": 137.3732571, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "ニューライフフジ 本部", "lat": 34.75447394, "lng": 137.4313896, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "フードオアシスあつみ 山田店", "lat": 34.74511655, "lng": 137.3920453, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "コープ岩田", "lat": 34.75389435, "lng": 137.4197032, "info1": "-", "info2": "-", "category": "スーパー" },
+{ "name": "ニューライフフジ 岩田店", "lat": 34.75442907, "lng": 137.4313119, "info1": "-", "info2": "-", "category": "スーパー" },
 
-            // --- その他カテゴリ ---
-            { "name": "業務スーパー 豊橋店", "lat": 34.74091018, "lng": 137.3926525, "info1": "-", "info2": "-", "category": "業務スーパー" },
-            { "name": "業務スーパー 二川店", "lat": 34.7286575, "lng": 137.4494971, "info1": "-", "info2": "-", "category": "業務スーパー" },
-            { "name": "アミカ 豊橋店", "lat": 34.752176, "lng": 137.3766466, "info1": "-", "info2": "-", "category": "業務スーパー" },
-            { "name": "アミカ 豊橋佐藤店", "lat": 34.742212, "lng": 137.4095675, "info1": "-", "info2": "-", "category": "業務スーパー" },
-            { "name": "Ｖ・drug 豊橋牛川店", "lat": 34.7818512, "lng": 137.4155411, "info1": "お肉も少し売ってる", "info2": "水・土ポイント3倍！！！", "category": "ドラッグストア" },
-            { "name": "ボン ブラジル", "lat": 34.73640865, "lng": 137.3740994, "info1": "-", "info2": "-", "category": "ブラジル食品" },
-            { "name": "The Amigos 岩屋", "lat": 34.73826865, "lng": 137.4238417, "info1": "-", "info2": "-", "category": "ブラジル食品" },
-            { "name": "㈱SANPHAMVIET", "lat": 34.76867465, "lng": 137.3828999, "info1": "-", "info2": "-", "category": "ベトナム食品" },
-            { "name": "鈴木フルーツ", "lat": 34.76514, "lng": 137.3826478, "info1": "-", "info2": "-", "category": "果物屋" },
-            { "name": "山安 魚市場店", "lat": 34.79047149, "lng": 137.369784, "info1": "-", "info2": "-", "category": "魚屋" },
-            { "name": "パワーズ 東脇店", "lat": 34.74997408, "lng": 137.3628205, "info1": "-", "info2": "-", "category": "食品倉庫" },
-            { "name": "夏目商店", "lat": 34.76045216, "lng": 137.3550955, "info1": "うなぎ", "info2": "-", "category": "直販所" },
-            { "name": "町のお惣菜屋さんやまや", "lat": 34.76627433, "lng": 137.3890173, "info1": "-", "info2": "-", "category": "八百屋" }
-        ];        
+// --- その他カテゴリ ---
+{ "name": "業務スーパー 豊橋店", "lat": 34.74091018, "lng": 137.3926525, "info1": "-", "info2": "-", "category": "業務スーパー" },
+{ "name": "業務スーパー 二川店", "lat": 34.7286575, "lng": 137.4494971, "info1": "-", "info2": "-", "category": "業務スーパー" },
+{ "name": "アミカ 豊橋店", "lat": 34.752176, "lng": 137.3766466, "info1": "-", "info2": "-", "category": "業務スーパー" },
+{ "name": "アミカ 豊橋佐藤店", "lat": 34.742212, "lng": 137.4095675, "info1": "-", "info2": "-", "category": "業務スーパー" },
+{ "name": "Ｖ・drug 豊橋牛川店", "lat": 34.7818512, "lng": 137.4155411, "info1": "お肉も少し売ってる", "info2": "水・土ポイント3倍！！！", "category": "ドラッグストア" },
+{ "name": "ボン ブラジル", "lat": 34.73640865, "lng": 137.3740994, "info1": "-", "info2": "-", "category": "ブラジル食品" },
+{ "name": "The Amigos 岩屋", "lat": 34.73826865, "lng": 137.4238417, "info1": "-", "info2": "-", "category": "ブラジル食品" },
+{ "name": "㈱SANPHAMVIET", "lat": 34.76867465, "lng": 137.3828999, "info1": "-", "info2": "-", "category": "ベトナム食品" },
+{ "name": "鈴木フルーツ", "lat": 34.76514, "lng": 137.3826478, "info1": "-", "info2": "-", "category": "果物屋" },
+{ "name": "山安 魚市場店", "lat": 34.79047149, "lng": 137.369784, "info1": "-", "info2": "-", "category": "魚屋" },
+{ "name": "パワーズ 東脇店", "lat": 34.74997408, "lng": 137.3628205, "info1": "-", "info2": "-", "category": "食品倉庫" },
+{ "name": "夏目商店", "lat": 34.76045216, "lng": 137.3550955, "info1": "うなぎ", "info2": "-", "category": "直販所" },
+{ "name": "町のお惣菜屋さんやまや", "lat": 34.76627433, "lng": 137.3890173, "info1": "-", "info2": "-", "category": "八百屋" }
+];
+    const markers = [];
+    stores.forEach(store => {
+        if (store.lat && store.lng) {
+            const markerColor = categoryColors[store.category] || "#747d8c";
+            const marker = L.circleMarker([store.lat, store.lng], {
+                radius: 15, 
+                fillColor: markerColor,
+                color: "#ffffff",
+                weight: 3,
+                opacity: 1,
+                fillOpacity: 0.9
+            });
 
-    // 3. 準備とピン立て
-        const markers = [];
-        const categoryColors = {
-            "スーパー": "#ff4757", "業務スーパー": "#2f3542", "ドラッグストア": "#2ed573",
-            "JA": "#ffa502", "直販所": "#7bed9f", "八百屋": "#ff6348", "果物屋": "#eccc68",
-            "魚屋": "#1e90ff", "ブラジル食品": "#3742fa", "ベトナム食品": "#ff7f50", "食品倉庫": "#a4b0be"
-        };
+            const priceHtml = store.price ? `<div style="margin-top:8px; padding:10px; background:#fffdf0; border-radius:6px; font-size:14px; border:1px solid #ffeaa7;">${store.price.split(' / ').join('<br>')}</div>` : "";
+            
+            const popupContent = `
+                <div style="font-size:16px; min-width:180px;">
+                    <strong>${store.name}</strong><br>
+                    <span style="font-size:13px; color:#666;">${store.info1 || ""}</span>
+                    ${priceHtml}
+                    <a href="https://www.google.com/maps/dir/?api=1&destination=${store.lat},${store.lng}" target="_blank" class="route-btn">🚗 ここへ行く</a>
+                </div>
+            `;
+            marker.bindPopup(popupContent);
+            marker.myCategory = store.category;
+            marker.myName = store.name;
+            markers.push(marker);
+            marker.addTo(map);
+        }
+    });
 
-// 3. マーカーの配置
-        stores.forEach(store => {
-            const lat = store.lat;
-            const lng = store.lng;
+    const filterContainer = document.getElementById('category-filters');
+    const searchBox = document.getElementById('search-box');
+    const resultsContainer = document.getElementById('search-results');
+    const categories = [...new Set(stores.map(s => s.category))];
 
-            if (lat && lng) {
-                // カテゴリごとの色設定（以前設定したもの）
-                const markerColor = categoryColors[store.category] || "#747d8c";
-                
-                // 表示用データの整理
-                const hasInfo1 = store.info1 && store.info1 !== "-" && store.info1 !== "なし";
-                const hasInfo2 = store.info2 && store.info2 !== "-" && store.info2 !== "なし";
-                const info1Html = hasInfo1 ? `📢 ${store.info1}<br>` : "";
-                const info2Html = hasInfo2 ? `✨ ${store.info2}` : "";
-                
-                // 単価カードのHTML
-                const priceHtml = (store.price && store.price !== "-" && store.price !== "なし") 
-                    ? `<div style="margin-top: 10px; padding: 8px; background: #fffdf0; border: 1px solid #ffeaa7; border-radius: 4px; font-size: 0.85em;">
-                        <div style="font-weight: bold; color: #d63031; margin-bottom: 5px; border-bottom: 1px dashed #ffeaa7;">💰 参考単価/円(税抜)</div>
-                        ${store.price.split(' / ').join('<br>')}
-                       </div>` 
-                    : "";
+    categories.forEach(cat => {
+        const label = document.createElement('label');
+        label.className = 'menu-item';
+        label.innerHTML = `<input type="checkbox" class="cat-check" checked value="${cat}"> ${cat}`;
+        filterContainer.appendChild(label);
+        label.querySelector('input').addEventListener('change', updateFilters);
+    });
 
-                // ルート検索ボタンのHTML
-                const routeBtnHtml = `
-                    <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" 
-                       target="_blank" 
-                       style="display: block; margin-top: 10px; padding: 8px; background: #1a73e8; color: white !important; text-align: center; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 0.85em;">
-                       🚗 ここへ行く（ルート検索）
-                    </a>`;
+    function updateFilters() {
+        const searchText = searchBox.value.toLowerCase();
+        const checkedCats = Array.from(filterContainer.querySelectorAll('.cat-check:checked')).map(i => i.value);
+        resultsContainer.innerHTML = '';
 
-                // マーカー（色付きの丸）の作成
-                const marker = L.circleMarker([Number(lat), Number(lng)], {
-                    radius: 10, 
-                    fillColor: markerColor, 
-                    color: "#ffffff", 
-                    weight: 2, 
-                    opacity: 1, 
-                    fillOpacity: 0.8
-                });
+        markers.forEach(m => {
+            const isCatMatch = checkedCats.includes(m.myCategory);
+            const isSearchMatch = m.myName.toLowerCase().includes(searchText);
 
-                // ポップアップを結合してセット
-                const popupContent = `
-                    <div style="min-width: 150px;">
-                        <strong style="font-size: 1.1em;">${store.name}</strong><br>
-                        ${info1Html}
-                        ${info2Html}
-                        ${priceHtml}
-                        ${routeBtnHtml}
-                    </div>
-                `;
-
-                marker.bindPopup(popupContent);
-                marker.bindTooltip(store.name);
-                
-                // フィルタ用のカテゴリを保存
-                marker.myCategory = store.category; 
-                
-                // 配列に保存して地図に追加
-                markers.push(marker);
-                marker.addTo(map);
+            if (isCatMatch && isSearchMatch) {
+                map.addLayer(m);
+                if (searchText.length > 0) {
+                    const d = document.createElement('div');
+                    d.style = 'padding:12px; border-bottom:1px solid #eee; cursor:pointer; font-size:14px;';
+                    d.innerText = m.myName;
+                    d.onclick = () => { map.flyTo(m.getLatLng(), 16); m.openPopup(); toggleMenu(); };
+                    resultsContainer.appendChild(d);
+                }
+            } else {
+                map.removeLayer(m);
             }
         });
-        
-        // 4. メニュー生成と検索・ジャンプ・絞り込み機能
-        const filterContainer = document.getElementById('category-filters');
-        const searchBox = document.getElementById('search-box');
-        const resultsContainer = document.getElementById('search-results'); // リスト表示用
-        const categories = [...new Set(stores.map(s => s.category))];
+    }
+    searchBox.addEventListener('input', updateFilters);
 
-        // --- 全選択用チェックボックスの作成 ---
-        const allSelectLabel = document.createElement('label');
-        allSelectLabel.className = 'menu-item';
-        allSelectLabel.style.borderBottom = "1px solid #eee";
-        allSelectLabel.style.paddingBottom = "5px";
-        allSelectLabel.innerHTML = `<input type="checkbox" id="all-select" checked> <strong>(すべて選択)</strong>`;
-        filterContainer.appendChild(allSelectLabel);
-
-        // --- カテゴリ別チェックボックスの作成 ---
-        categories.forEach(cat => {
-            const label = document.createElement('label');
-            label.className = 'menu-item';
-            label.innerHTML = `<input type="checkbox" class="cat-check" checked value="${cat}"> ${cat}`;
-            filterContainer.appendChild(label);
-            
-            // チェックボックスが変わったらフィルタ実行
-            label.querySelector('input').addEventListener('change', updateFilters);
-        });
-
-        // --- フィルタ更新 兼 ジャンプリスト生成関数 ---
-        function updateFilters() {
-            const searchText = searchBox.value.toLowerCase();
-            const checkedInputs = filterContainer.querySelectorAll('.cat-check:checked');
-            const checkedCategories = Array.from(checkedInputs).map(input => input.value);
-            
-            resultsContainer.innerHTML = ''; // 候補リストを一旦クリア
-
-            markers.forEach(m => {
-                const storeName = m.getTooltip().getContent(); // 店名取得
-                const matchCategory = checkedCategories.includes(m.myCategory);
-                const matchSearch = storeName.toLowerCase().includes(searchText);
-
-                if (matchCategory && matchSearch) { 
-                    map.addLayer(m); 
-                    
-                    // 検索入力がある場合のみリストに店名を追加
-                    if (searchText.length > 0) {
-                        const item = document.createElement('div');
-                        item.style = 'padding: 8px; cursor: pointer; border-bottom: 1px solid #eee; transition: background 0.2s;';
-                        item.innerText = storeName;
-                        
-                        // マウスオーバーで少し色を変える演出
-                        item.onmouseover = () => item.style.background = '#f0f0f0';
-                        item.onmouseout = () => item.style.background = 'transparent';
-
-                        // クリックしたらその店にジャンプ！
-                        item.onclick = () => {
-                            map.flyTo(m.getLatLng(), 16); 
-                            m.openPopup(); 
-                        };
-                        resultsContainer.appendChild(item);
-                    }
-                } else { 
-                    map.removeLayer(m); 
-                }
-            });
-
-            // 「すべて選択」のチェック状態を連動させる
-            const allChecks = filterContainer.querySelectorAll('.cat-check');
-            document.getElementById('all-select').checked = (checkedInputs.length === allChecks.length);
-        }
-
-        // --- イベントリスナーの設定 ---
-
-        // 検索ボックス入力時
-        searchBox.addEventListener('input', updateFilters);
-
-        // 「すべて選択」クリック時
-        document.getElementById('all-select').addEventListener('change', function() {
-            const isChecked = this.checked;
-            filterContainer.querySelectorAll('.cat-check').forEach(input => { 
-                input.checked = isChecked; 
-            });
-            updateFilters();
-        });
-
-        // 5. 現在地表示
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition((position) => {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                L.circleMarker([lat, lng], { radius: 10, color: '#2196F3', fillColor: '#2196F3', fillOpacity: 0.5 }).addTo(map).bindPopup("あなたは今ここにいます");
-            });
-        }
-
-        function goToMyLocation() {
-            navigator.geolocation.getCurrentPosition((position) => {
-                map.flyTo([position.coords.latitude, position.coords.longitude], 15);
-            });
-        }
-    </script>
+    function goToMyLocation() {
+        navigator.geolocation.getCurrentPosition(pos => {
+            const latlng = [pos.coords.latitude, pos.coords.longitude];
+            L.circleMarker(latlng, { radius: 10, color: '#1a73e8', fillColor: '#1a73e8', fillOpacity: 0.8 }).addTo(map).bindPopup("現在地").openPopup();
+            map.flyTo(latlng, 16);
+        }, err => alert("位置情報を許可してください"));
+    }
+</script>
 </body>
-
 </html>
