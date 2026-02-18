@@ -172,9 +172,9 @@
                 };
             }).filter(d => d !== null);
 
-            createMarkers();
-            updateFilters();
-            setupCategoryMenu();
+            createMarkers();     // 1. マーカーを作成
+            setupCategoryMenu();  // 2. メニューを作成
+            updateFilters();     // 3. 初期表示を実行
         } catch (e) {
             console.error(e);
         }
@@ -207,13 +207,11 @@
         });
     }
 
-    // 投稿画面へ店名を引き継ぐ
     function openPostWithStore(storeName) {
         document.getElementById('post-store-name').value = storeName;
         showPage('post-page', document.querySelectorAll('.nav-item')[2]);
     }
 
-    // データ送信
     async function submitData() {
         const storeName = document.getElementById('post-store-name').value;
         const itemName = document.getElementById('post-item-name').value;
@@ -232,7 +230,7 @@
         try {
             await fetch(gasUrl, {
                 method: "POST",
-                mode: "no-cors", // 重要
+                mode: "no-cors",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ storeName, itemName, price, memo })
             });
@@ -252,7 +250,13 @@
 
     function updateFilters() {
         const searchText = document.getElementById('search-box').value.toLowerCase();
-        const checkedCats = Array.from(document.querySelectorAll('.cat-check:checked')).map(i => i.value);
+        const checkboxes = document.querySelectorAll('.cat-check');
+        
+        // チェックボックスがまだ生成されていない場合は全カテゴリを表示対象にする
+        const checkedCats = checkboxes.length > 0 
+            ? Array.from(document.querySelectorAll('.cat-check:checked')).map(i => i.value)
+            : Object.keys(categoryColors);
+
         const listContent = document.getElementById('store-list-content');
         listContent.innerHTML = '';
 
@@ -315,39 +319,11 @@
             map.flyTo(latlng, 16);
         }, err => alert("位置情報をオンにしてください"));
     }
-    async function loadData() {
-        try {
-            const response = await fetch(csvUrl + '&t=' + new Date().getTime());
-            const csvText = await response.text();
-            const data = csvToArray(csvText.trim());
-            const rows = data.slice(1);
-
-            allStoreData = rows.map(cols => {
-                // ...（中身はそのまま）
-            }).filter(d => d !== null);
-
-            createMarkers();    // マーカーを作成
-            setupCategoryMenu(); // メニューを作成
-           function updateFilters() {
-        const searchText = document.getElementById('search-box').value.toLowerCase();
-        
-        // チェックボックスが存在するか確認し、なければ「すべて選択」とみなす
-        const checkboxes = document.querySelectorAll('.cat-check');
-        const checkedCats = checkboxes.length > 0 
-            ? Array.from(document.querySelectorAll('.cat-check:checked')).map(i => i.value)
-            : Object.keys(categoryColors); // 初期状態は全カテゴリを対象にする
-
-        const listContent = document.getElementById('store-list-content');
-        listContent.innerHTML = '';
-
-        // ...（以下のマーカー表示・非表示のロジックはそのまま）
-        } catch (e) {
-            console.error(e);
-        }
-    };
+    loadData();
 </script>
 </body>
 </html>
+
 
 
 
