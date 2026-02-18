@@ -315,10 +315,40 @@
             map.flyTo(latlng, 16);
         }, err => alert("位置情報をオンにしてください"));
     }
-    loadData();
+    async function loadData() {
+        try {
+            const response = await fetch(csvUrl + '&t=' + new Date().getTime());
+            const csvText = await response.text();
+            const data = csvToArray(csvText.trim());
+            const rows = data.slice(1);
+
+            allStoreData = rows.map(cols => {
+                // ...（中身はそのまま）
+            }).filter(d => d !== null);
+
+            createMarkers();    // マーカーを作成
+            setupCategoryMenu(); // メニューを作成
+           function updateFilters() {
+        const searchText = document.getElementById('search-box').value.toLowerCase();
+        
+        // チェックボックスが存在するか確認し、なければ「すべて選択」とみなす
+        const checkboxes = document.querySelectorAll('.cat-check');
+        const checkedCats = checkboxes.length > 0 
+            ? Array.from(document.querySelectorAll('.cat-check:checked')).map(i => i.value)
+            : Object.keys(categoryColors); // 初期状態は全カテゴリを対象にする
+
+        const listContent = document.getElementById('store-list-content');
+        listContent.innerHTML = '';
+
+        // ...（以下のマーカー表示・非表示のロジックはそのまま）
+        } catch (e) {
+            console.error(e);
+        }
+    };
 </script>
 </body>
 </html>
+
 
 
 
