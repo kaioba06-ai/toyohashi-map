@@ -10,44 +10,76 @@
     <link rel="apple-touch-icon" href="icon.png">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        body { margin: 0; padding: 0; font-family: sans-serif; background: #f8f9fa; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
-        header { background: #1a73e8; padding: 10px 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 6000; }
-        .search-container { display: flex; gap: 8px; }
-        #search-box { flex: 1; padding: 10px; border-radius: 8px; border: none; font-size: 16px; }
-        #menu-toggle { background: #fff; color: #1a73e8; border: none; border-radius: 8px; padding: 0 15px; font-weight: bold; cursor: pointer; }
-        
-        #menu { position: fixed; top: 60px; right: 15px; z-index: 7000; background: white; width: 240px; padding: 15px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.2); display: none; }
-        #menu.show { display: block; }
+<style>
+    /* 全体のレイアウト設定 */
+    body { 
+        margin: 0; 
+        padding: 0; 
+        font-family: sans-serif; 
+        background: #f8f9fa; 
+        overflow: hidden; 
+        /* dvhを使うことでスマホのツールバー問題を解決 */
+        height: 100dvh; 
+        display: flex; 
+        flex-direction: column; 
+    }
 
-        .page { display: none; flex: 1; width: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-        .active { display: flex; flex-direction: column; }
-        
-        #map-page { position: relative; }
-        #map { flex: 1; width: 100%; z-index: 1; }
-        
-        #footer-nav { height: 65px; background: white; display: flex; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 5000; padding-bottom: env(safe-area-inset-bottom); }
-        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: #666; cursor: pointer; border: none; background: none; }
-        .nav-item.active-nav { color: #1a73e8; font-weight: bold; }
-        .nav-icon { font-size: 24px; margin-bottom: 2px; }
+    /* ヘッダー：高さを固定 */
+    header { 
+        background: #1a73e8; 
+        padding: 10px 15px; 
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
+        z-index: 6000; 
+        flex-shrink: 0; /* 潰れないように固定 */
+    }
 
-        .list-container { padding: 15px; }
-        .store-card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 5px solid #ccc; }
-        .category-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; color: white; margin: 5px 0; }
-        
-        /* 投稿フォームのスタイル */
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
-        .form-group input, .form-group textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; font-size: 16px; }
-        
-        .post-btn { background: #1a73e8; color: white; border: none; padding: 15px; border-radius: 8px; font-weight: bold; width: 100%; font-size: 16px; cursor: pointer; }
-        .post-btn:disabled { background: #ccc; }
+    .search-container { display: flex; gap: 8px; }
+    #search-box { flex: 1; padding: 10px; border-radius: 8px; border: none; font-size: 16px; }
+    #menu-toggle { background: #fff; color: #1a73e8; border: none; border-radius: 8px; padding: 0 15px; font-weight: bold; cursor: pointer; }
+    
+    #menu { position: fixed; top: 60px; right: 15px; z-index: 7000; background: white; width: 240px; padding: 15px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.2); display: none; }
+    #menu.show { display: block; }
 
-        /* ポップアップ内のボタン */
-        .popup-post-btn { background: #34a853; color: white !important; border: none; padding: 8px; border-radius: 5px; width: 100%; font-weight: bold; margin-top: 10px; cursor: pointer; text-align: center; display: block; text-decoration: none; font-size: 12px; }
-        .route-btn { display: block; margin-top: 5px; padding: 8px; background: #f1f3f4; color: #1a73e8 !important; text-align: center; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 12px; }
-        .location-btn { position: absolute; bottom: 20px; left: 20px; z-index: 1000; background: white; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); border: 2px solid #1a73e8; }
-    </style>
+    /* メインコンテンツエリア：ヘッダーとフッターの間の残り全部 */
+    .page { 
+        display: none; 
+        flex: 1; 
+        width: 100%; 
+        overflow-y: auto; 
+        -webkit-overflow-scrolling: touch; 
+    }
+    .active { display: flex; flex-direction: column; }
+    
+    #map-page { position: relative; }
+    #map { flex: 1; width: 100%; z-index: 1; }
+    
+    /* フッター：高さを固定し、最下部に配置 */
+    #footer-nav { 
+        height: 65px; 
+        background: white; 
+        display: flex; 
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1); 
+        z-index: 5000; 
+        flex-shrink: 0; /* 潰れないように固定 */
+        /* iPhoneのホームバー（下の線）との干渉を防ぐ */
+        padding-bottom: env(safe-area-inset-bottom);
+        box-sizing: content-box;
+    }
+
+    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: #666; cursor: pointer; border: none; background: none; }
+    .nav-item.active-nav { color: #1a73e8; font-weight: bold; }
+    .nav-icon { font-size: 24px; margin-bottom: 2px; }
+
+    /* リストなどの余白調整 */
+    .list-container { padding: 15px; }
+    .store-card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 5px solid #ccc; }
+    
+    /* 投稿フォームのボタンがフッターで隠れないように最後に余白を追加 */
+    #post-page > div { padding-bottom: 40px; }
+
+    /* ボタン・位置情報のボタン */
+    .location-btn { position: absolute; bottom: 20px; left: 20px; z-index: 1000; background: white; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); border: 2px solid #1a73e8; }
+</style>
 </head>
 <body>
 
@@ -323,6 +355,7 @@
 </script>
 </body>
 </html>
+
 
 
 
