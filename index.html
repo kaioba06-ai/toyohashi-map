@@ -134,10 +134,11 @@
                 <label>店名</label>
                 <input type="text" id="post-store-name" placeholder="マップから選択するか入力">
             </div>
-            <div class="form-group">
-                <label>商品名</label>
-                <input type="text" id="post-item-name" placeholder="例：たまご">
-            </div>
+　　　　　　<div class="form-group">
+   　　　　 　<label>店名</label>
+  　　　　 　 <input type="text" id="post-store-name" list="store-list-candidates" placeholder="店名を入力または選択">
+   　　　　 　<datalist id="store-list-candidates"></datalist>
+　　　　　　</div>
             <div class="form-group">
                 <label>価格</label>
                 <input type="text" id="post-price" placeholder="例：198円">
@@ -196,7 +197,22 @@
         });
         return result;
     }
-
+    
+// 店名の候補リスト（datalist）を作成する関数
+    function updateStoreDatalist() {
+        const datalist = document.getElementById('store-list-candidates');
+        // 重複を除いた店名リストを作成
+        const storeNames = [...new Set(allStoreData.map(store => store.name))];
+        
+        // datalistの中身をクリアして、新しい候補を追加
+        datalist.innerHTML = '';
+        storeNames.sort().forEach(name => {
+            const option = document.createElement('option');
+            option.value = name;
+            datalist.appendChild(option);
+        });
+    }
+    
     async function loadData() {
         try {
             const response = await fetch(csvUrl + '&t=' + new Date().getTime());
@@ -219,6 +235,7 @@
             createMarkers();
             setupCategoryMenu();
             updateFilters();
+            updateStoreDatalist();
         } catch (e) { console.error(e); }
     }
 
@@ -335,3 +352,4 @@
 </script>
 </body>
 </html>
+
