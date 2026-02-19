@@ -130,23 +130,28 @@
     <div style="padding: 20px; max-width: 500px; margin: 0 auto; width: 100%; box-sizing: border-box;">
         <h2 style="text-align:center;">💰 情報投稿</h2>
         <div style="background:white; padding:20px; border-radius:15px; box-shadow:0 4px 10px rgba(0,0,0,0.1);">
+            
             <div class="form-group">
                 <label>店名</label>
-                <input type="text" id="post-store-name" list="store-list-candidates" placeholder="店名を入力または選択">
+                <input type="text" id="post-store-name" list="store-list-candidates" placeholder="店名を選択または入力">
                 <datalist id="store-list-candidates"></datalist>
             </div>
+
             <div class="form-group">
                 <label>商品名</label>
-                <input type="text" id="post-item-name" placeholder="例：たまご">
+                <input type="text" id="post-item-name" placeholder="例：たまご、キャベツ">
             </div>
+
             <div class="form-group">
                 <label>価格</label>
                 <input type="text" id="post-price" placeholder="例：198円">
             </div>
+
             <div class="form-group">
                 <label>備考（任意）</label>
                 <textarea id="post-memo" placeholder="セールの情報など"></textarea>
             </div>
+
             <button onclick="submitData()" id="submit-btn" class="post-btn">投稿する</button>
         </div>
     </div>
@@ -351,3 +356,4 @@
 </script>
 </body>
 </html>
+
