@@ -126,14 +126,13 @@
         try {
             const res = await fetch(csvUrl + '&t=' + Date.now());
             const data = csvToArray(await res.text()).slice(1);
-            allStoreData = data.map(cols => ({
-                name: (cols[0] || "").trim(),
-                lat: parseFloat(cols[1]), lng: parseFloat(cols[2]),
-                info1: cols[3] || "", // ★ ここが「店舗詳細」や「住所」など
-                memo: cols[4] || "",  // ★ ここが「備考」
-                category: (cols[5] || "未分類").trim(), 
-                price: cols[6] || ""
-            })).filter(d => !isNaN(d.lat));
+　　 allStoreData = data.map(cols => ({
+ 　　   name: (cols[0] || "").trim(),
+  　　  lat: parseFloat(cols[1]), 
+  　　  lng: parseFloat(cols[2]),
+   　　 category: (cols[5] || "未分類").trim(), 
+   　　 price: cols[6] || "" // ここに "198円 (たまご) [夕方セール]" が丸ごと入る
+　　})).filter(d => !isNaN(d.lat));
             createMarkers();
             setupCategoryMenu();
             updateFilters();
@@ -223,3 +222,4 @@
 </script>
 </body>
 </html>
+
