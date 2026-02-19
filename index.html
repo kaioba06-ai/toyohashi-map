@@ -6,47 +6,40 @@
     <title>豊橋お買い物マップ</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        /* --- 全体スタイル --- */
+        /* 前回のスタイルを継続 */
         body { margin: 0; padding: 0; font-family: sans-serif; background: #f0f2f5; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
         header { background: #fff; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); z-index: 6000; }
         .search-container { display: flex; gap: 8px; }
         #search-box { flex: 1; padding: 10px 15px; border-radius: 20px; border: 1px solid #ddd; font-size: 16px; outline: none; }
         #menu-toggle { background: #1a73e8; color: #fff; border: none; border-radius: 20px; padding: 0 15px; font-weight: bold; }
-
-        /* --- ページ構成 --- */
         .page { display: none; flex: 1; width: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         .active { display: flex; flex-direction: column; }
         #map { flex: 1; width: 100%; z-index: 1; }
-
-        /* --- メニュー・カード --- */
         #menu { position: fixed; top: 65px; right: 10px; z-index: 7000; background: white; width: 240px; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: none; }
         #menu.show { display: block; }
         .list-container { padding: 15px; }
         .store-card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .category-tag { display: inline-block; padding: 3px 8px; border-radius: 10px; font-size: 10px; color: white; margin-bottom: 5px; font-weight: bold; }
-
-        /* --- フォーム --- */
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; margin-bottom: 5px; font-size: 14px; color: #666; font-weight: bold; }
         .form-group input, .form-group textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; font-size: 16px; }
         .post-btn { background: #1a73e8; color: white; border: none; padding: 15px; border-radius: 8px; width: 100%; font-weight: bold; font-size: 16px; }
-
-        /* --- ナビゲーション --- */
         #footer-nav { height: 65px; background: #fff; display: flex; border-top: 1px solid #eee; z-index: 5000; padding-bottom: env(safe-area-inset-bottom); }
         .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: #5f6368; background: none; border: none; }
         .nav-item.active-nav { color: #1a73e8; font-weight: bold; }
         .nav-icon { font-size: 20px; margin-bottom: 2px; }
-
-        /* --- 地図パーツ --- */
         .location-btn { position: absolute; bottom: 20px; right: 20px; z-index: 1000; background: white; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 10px rgba(0,0,0,0.2); font-size: 24px; color: #1a73e8; }
         .popup-post-btn { background: #34a853; color: white !important; padding: 8px; border-radius: 5px; width: 100%; border: none; margin-top: 8px; font-weight: bold; display: block; text-align: center; text-decoration: none; }
+        
+        /* 備考欄用のスタイル */
+        .memo-box { margin-top: 5px; padding: 5px; background: #f8f9fa; border-left: 3px solid #ccc; font-size: 11px; color: #558; }
     </style>
 </head>
 <body>
 
 <header>
     <div class="search-container">
-        <input type="text" id="search-box" placeholder="店名や底値商品を検索..." oninput="updateFilters()">
+        <input type="text" id="search-box" placeholder="店名や商品で検索..." oninput="updateFilters()">
         <button id="menu-toggle" onclick="toggleMenu()">🔍 絞込</button>
     </div>
 </header>
@@ -73,12 +66,12 @@
                 <datalist id="item-list-candidates"></datalist>
             </div>
             <div class="form-group">
-                <label>価格（税別）</label>
+                <label>価格</label>
                 <input type="text" id="post-price" placeholder="例：198円">
             </div>
             <div class="form-group">
                 <label>備考</label>
-                <textarea id="post-memo" placeholder="量や大きさなど"></textarea>
+                <textarea id="post-memo" placeholder="セールの情報など"></textarea>
             </div>
             <button onclick="submitData()" id="submit-btn" class="post-btn">投稿する</button>
         </div>
@@ -116,7 +109,6 @@
         });
     }
 
-    // --- 各種リスト更新 ---
     function updateStoreDatalist() {
         const datalist = document.getElementById('store-list-candidates');
         const names = [...new Set(allStoreData.map(s => s.name))].sort();
@@ -137,7 +129,10 @@
             allStoreData = data.map(cols => ({
                 name: (cols[0] || "").trim(),
                 lat: parseFloat(cols[1]), lng: parseFloat(cols[2]),
-                category: (cols[5] || "未分類").trim(), price: cols[6] || ""
+                info1: cols[3] || "", // ★ ここが「店舗詳細」や「住所」など
+                memo: cols[4] || "",  // ★ ここが「備考」
+                category: (cols[5] || "未分類").trim(), 
+                price: cols[6] || ""
             })).filter(d => !isNaN(d.lat));
             createMarkers();
             setupCategoryMenu();
@@ -151,7 +146,18 @@
         markers.forEach(m => map.removeLayer(m));
         markers = allStoreData.map(store => {
             const m = L.circleMarker([store.lat, store.lng], { radius: 10, fillColor: categoryColors[store.category] || "#777", color: "#fff", weight: 2, fillOpacity: 0.8 });
-            m.bindPopup(`<strong>${store.name}</strong><br><small>${store.category}</small><div style="font-size:12px;color:red;font-weight:bold;">${store.price.split('/').join('<br>')}</div><button class="popup-post-btn" onclick="openPostWithStore('${store.name}')">💰 報告</button>`);
+            
+            // 備考がある場合のみHTMLを作成
+            const memoHtml = store.memo ? `<div class="memo-box">📝 ${store.memo}</div>` : "";
+            const priceHtml = store.price ? `<div style="font-size:12px;color:red;font-weight:bold;margin-top:5px;">${store.price.split('/').join('<br>')}</div>` : "";
+
+            m.bindPopup(`
+                <strong>${store.name}</strong><br>
+                <small>${store.category}</small>
+                ${priceHtml}
+                ${memoHtml}
+                <button class="popup-post-btn" onclick="openPostWithStore('${store.name}')">💰 報告</button>
+            `);
             m.storeData = store;
             return m.addTo(map);
         });
@@ -162,14 +168,21 @@
         const list = document.getElementById('store-list-content');
         list.innerHTML = "";
         markers.forEach(m => {
-            const match = m.storeData.name.toLowerCase().includes(search) || m.storeData.price.toLowerCase().includes(search);
+            const match = m.storeData.name.toLowerCase().includes(search) || m.storeData.price.toLowerCase().includes(search) || m.storeData.memo.toLowerCase().includes(search);
             if (match) { map.addLayer(m); } else { map.removeLayer(m); }
         });
         allStoreData.forEach(s => {
-            if (s.name.toLowerCase().includes(search) || s.price.toLowerCase().includes(search)) {
+            if (s.name.toLowerCase().includes(search) || s.price.toLowerCase().includes(search) || s.memo.toLowerCase().includes(search)) {
+                const memoHtml = s.memo ? `<div class="memo-box">📝 ${s.memo}</div>` : "";
                 const card = document.createElement('div');
                 card.className = 'store-card';
-                card.innerHTML = `<div class="category-tag" style="background:${categoryColors[s.category]}">${s.category}</div><div style="font-weight:bold;">${s.name}</div><div style="color:red; font-size:14px; margin-top:5px;">${s.price}</div><button onclick="openPostWithStore('${s.name}')" style="margin-top:8px; border:1px solid #1a73e8; color:#1a73e8; background:none; width:100%; border-radius:5px; padding:5px;">💰 報告</button>`;
+                card.innerHTML = `
+                    <div class="category-tag" style="background:${categoryColors[s.category]}">${s.category}</div>
+                    <div style="font-weight:bold;">${s.name}</div>
+                    <div style="color:red; font-size:14px; margin-top:5px;">${s.price}</div>
+                    ${memoHtml}
+                    <button onclick="openPostWithStore('${s.name}')" style="margin-top:8px; border:1px solid #1a73e8; color:#1a73e8; background:none; width:100%; border-radius:5px; padding:5px;">💰 報告</button>
+                `;
                 list.appendChild(card);
             }
         });
@@ -201,7 +214,7 @@
             localStorage.setItem('post_history', JSON.stringify([...new Set(history)].slice(0, 10)));
             updateItemDatalist();
             alert("投稿完了！反映をお待ちください。");
-            document.getElementById('post-item-name').value = ""; document.getElementById('post-price').value = "";
+            document.getElementById('post-item-name').value = ""; document.getElementById('post-price').value = ""; document.getElementById('post-memo').value = "";
             showPage('map-page', document.querySelectorAll('.nav-item')[0]);
         } catch (e) { alert("エラー"); }
         finally { btn.innerText = "投稿する"; btn.disabled = false; }
@@ -210,5 +223,3 @@
 </script>
 </body>
 </html>
-
-
