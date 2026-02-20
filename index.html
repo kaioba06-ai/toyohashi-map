@@ -45,7 +45,13 @@
 </header>
 
 <div id="menu">
-    <strong>カテゴリで絞り込み</strong><hr>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <strong>カテゴリで絞り込み</strong>
+        <label style="font-size: 12px; color: #1a73e8; cursor: pointer;">
+            <input type="checkbox" id="all-check" checked onchange="toggleAllCategories(this.checked)"> 全選択
+        </label>
+    </div>
+    <hr>
     <div id="category-filters"></div>
 </div>
 
@@ -162,40 +168,74 @@
         });
     }
 
-    function updateFilters() {
-        const search = document.getElementById('search-box').value.toLowerCase();
-        const list = document.getElementById('store-list-content');
-        list.innerHTML = "";
-        markers.forEach(m => {
-            const match = m.storeData.name.toLowerCase().includes(search) || m.storeData.price.toLowerCase().includes(search) || m.storeData.memo.toLowerCase().includes(search);
-            if (match) { map.addLayer(m); } else { map.removeLayer(m); }
-        });
-        allStoreData.forEach(s => {
-            if (s.name.toLowerCase().includes(search) || s.price.toLowerCase().includes(search) || s.memo.toLowerCase().includes(search)) {
-                const memoHtml = s.memo ? `<div class="memo-box">📝 ${s.memo}</div>` : "";
-                const card = document.createElement('div');
-                card.className = 'store-card';
-                card.innerHTML = `
-                    <div class="category-tag" style="background:${categoryColors[s.category]}">${s.category}</div>
-                    <div style="font-weight:bold;">${s.name}</div>
-                    <div style="color:red; font-size:14px; margin-top:5px;">${s.price}</div>
-                    ${memoHtml}
-                    <button onclick="openPostWithStore('${s.name}')" style="margin-top:8px; border:1px solid #1a73e8; color:#1a73e8; background:none; width:100%; border-radius:5px; padding:5px;">💰 報告</button>
-                `;
-                list.appendChild(card);
-            }
-        });
+function updateFilters() {
+    const search = document.getElementById('search-box').value.toLowerCase();
+    const list = document.getElementById('store-list-content');
+    list.innerHTML = "";
+
+    // 1. 現在チェックが入っているカテゴリをリストアップする
+    const checkedCategories = Array.from(document.querySelectorAll('#category-filters input:checked'))
+                                   .map(cb => cb.value);
+
+    // 2. 「全選択」チェックボックスの表示を今の状態に合わせる
+    const allCheck = document.getElementById('all-check');
+    const totalCategories = document.querySelectorAll('#category-filters input[type="checkbox"]').length;
+    if (allCheck) {
+        allCheck.checked = checkedCategories.length === totalCategories;
     }
+
+    // 3. マーカーとリストを一括で更新する
+    markers.forEach(m => {
+        const s = m.storeData;
+        
+        // 「カテゴリが選ばれているか」かつ「検索ワードにヒットするか」を判定
+        const isCategoryVisible = checkedCategories.includes(s.category);
+        const isSearchMatch = s.name.toLowerCase().includes(search) || 
+                              s.price.toLowerCase().includes(search) || 
+                              (s.memo && s.memo.toLowerCase().includes(search));
+
+        if (isCategoryVisible && isSearchMatch) {
+            // 地図に表示
+            map.addLayer(m);
+            
+            // 一覧画面にカードを追加
+            const memoHtml = s.memo ? `<div class="memo-box">📝 ${s.memo}</div>` : "";
+            const card = document.createElement('div');
+            card.className = 'store-card';
+            card.innerHTML = `
+                <div class="category-tag" style="background:${categoryColors[s.category] || '#777'}">${s.category}</div>
+                <div style="font-weight:bold;">${s.name}</div>
+                <div style="color:red; font-size:14px; margin-top:5px;">${s.price}</div>
+                ${memoHtml}
+                <button onclick="openPostWithStore('${s.name}')" style="margin-top:8px; border:1px solid #1a73e8; color:#1a73e8; background:none; width:100%; border-radius:5px; padding:5px;">💰 報告</button>
+            `;
+            list.appendChild(card);
+        } else {
+            // 条件に合わなければ地図から消す
+            map.removeLayer(m);
+        }
+    });
+}
 
     function setupCategoryMenu() {
-        const cats = [...new Set(allStoreData.map(d => d.category))].sort();
-        const container = document.getElementById('category-filters');
-        container.innerHTML = cats.map(c => `<label style="display:block;margin:5px 0;"><input type="checkbox" checked value="${c}" onchange="updateFilters()"> ${c}</label>`).join('');
+       const cats = [...new Set(allStoreData.map(d => d.category))].sort();
+       const container = document.getElementById('category-filters');
+       // 各チェックボックスが個別に操作されたときもupdateFiltersを呼ぶ
+       container.innerHTML = cats.map(c => `
+         <label style="display:block;margin:5px 0;">
+             <input type="checkbox" checked value="${c}" onchange="updateFilters()"> ${c}
+         </label>
+    `).join('');
     }
-
     function openPostWithStore(name) { document.getElementById('post-store-name').value = name; showPage('post-page', document.querySelectorAll('.nav-item')[2]); }
     function showPage(id, elm) { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.getElementById(id).classList.add('active'); document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active-nav')); elm.classList.add('active-nav'); if(id==='map-page') setTimeout(() => map.invalidateSize(), 100); }
-    function toggleMenu() { document.getElementById('menu').classList.toggle('show'); }
+    function toggleAllCategories(isChecked) {
+    const checkboxes = document.querySelectorAll('#category-filters input[type="checkbox"]');
+    checkboxes.forEach(cb => {
+        cb.checked = isChecked;
+    });
+    updateFilters(); // 状態を反映
+    }
     function goToMyLocation() { navigator.geolocation.getCurrentPosition(p => { const ll = [p.coords.latitude, p.coords.longitude]; L.circleMarker(ll, {radius:7, color:'#1a73e8'}).addTo(map); map.flyTo(ll, 16); }); }
 
     async function submitData() {
@@ -222,5 +262,4 @@
 </script>
 </body>
 </html>
-
 
