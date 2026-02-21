@@ -129,6 +129,37 @@
         datalist.innerHTML = combined.map(i => `<option value="${i}">`).join('');
     }
 
+// 現在地を常に表示するための設定
+let watchId = null;
+
+    function startTracking() {
+     if (!navigator.geolocation) return;
+
+      // 前回の追跡をクリア
+     if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+
+      watchId = navigator.geolocation.watchPosition(
+        (p) => {
+            const ll = [p.coords.latitude, p.coords.longitude];
+            
+            // 青い現在地マークの更新
+            if (window.myLocMarker) {
+                window.myLocMarker.setLatLng(ll);
+            } else {
+                window.myLocMarker = L.circleMarker(ll, {
+                    radius: 8, color: '#fff', fillColor: '#1a73e8', fillOpacity: 1, weight: 2
+                }).addTo(map);
+            }
+        },
+        (e) => { console.error("位置情報追跡エラー:", e); },
+        { enableHighAccuracy: true }
+    );
+        }
+
+// アプリ起動時に追跡を開始
+startTracking();
+
+
     async function loadData() {
         try {
             const res = await fetch(csvUrl + '&t=' + Date.now());
@@ -177,32 +208,44 @@
         });
     }
 
-    function updateFilters() {
-        const search = document.getElementById('search-box').value.toLowerCase();
-        const list = document.getElementById('store-list-content');
-        list.innerHTML = "";
-        
-        const checkedCategories = Array.from(document.querySelectorAll('#category-filters input:checked')).map(cb => cb.value);
-        const allCheck = document.getElementById('all-check');
-        const totalCats = document.querySelectorAll('#category-filters input[type="checkbox"]').length;
-        if (allCheck) allCheck.checked = (checkedCategories.length === totalCats);
+  function updateFilters() {
+    const search = document.getElementById('search-box').value.toLowerCase();
+    const list = document.getElementById('store-list-content');
+    list.innerHTML = "";
+    
+    const checkedCategories = Array.from(document.querySelectorAll('#category-filters input:checked')).map(cb => cb.value);
+    const allCheck = document.getElementById('all-check');
+    const totalCats = document.querySelectorAll('#category-filters input[type="checkbox"]').length;
+    if (allCheck) allCheck.checked = (checkedCategories.length === totalCats);
 
-        markers.forEach(m => {
-            const s = m.storeData;
-            const isCategoryVisible = checkedCategories.includes(s.category);
-            const isSearchMatch = s.name.toLowerCase().includes(search) || s.price.toLowerCase().includes(search);
+    markers.forEach(m => {
+        const s = m.storeData;
+        const isCategoryVisible = checkedCategories.includes(s.category);
+        const isSearchMatch = s.name.toLowerCase().includes(search) || s.price.toLowerCase().includes(search);
 
-            if (isCategoryVisible && isSearchMatch) {
-                map.addLayer(m);
-                const card = document.createElement('div');
-                card.className = 'store-card';
-                card.innerHTML = `<div class="category-tag" style="background:${categoryColors[s.category] || '#777'}">${s.category}</div><div style="font-weight:bold;">${s.name}</div><div style="color:red; font-size:14px; margin-top:5px;">${s.price}</div><button onclick="openPostWithStore('${s.name}')" style="margin-top:8px; border:1px solid #1a73e8; color:#1a73e8; background:none; width:100%; border-radius:5px; padding:5px;">💰 報告</button>`;
-                list.appendChild(card);
-            } else {
-                map.removeLayer(m);
-            }
-        });
-    }
+        if (isCategoryVisible && isSearchMatch) {
+            map.addLayer(m);
+            
+            // Googleマップリンクの生成
+            const googleMapUrl = `https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lng}`;
+            
+            const card = document.createElement('div');
+            card.className = 'store-card';
+            card.innerHTML = `
+                <div class="category-tag" style="background:${categoryColors[s.category] || '#777'}">${s.category}</div>
+                <div style="font-weight:bold; font-size:16px;">${s.name}</div>
+                <div style="color:red; font-size:14px; margin-top:5px; font-weight:bold;">${s.price}</div>
+                <div style="display: flex; gap: 8px; margin-top: 10px;">
+                    <a href="${googleMapUrl}" target="_blank" rel="noopener noreferrer" style="flex: 1; border: 1px solid #1a73e8; color: #1a73e8; text-align: center; text-decoration: none; padding: 8px; border-radius: 5px; font-size: 13px; font-weight: bold;">🗺️ 案内</a>
+                    <button onclick="openPostWithStore('${s.name}')" style="flex: 1; border: 1px solid #34a853; color: #34a853; background: none; padding: 8px; border-radius: 5px; font-size: 13px; font-weight: bold;">💰 報告</button>
+                </div>
+            `;
+            list.appendChild(card);
+        } else {
+            map.removeLayer(m);
+        }
+    });
+}
 
     function setupCategoryMenu() {
         const cats = [...new Set(allStoreData.map(d => d.category))].sort();
@@ -269,3 +312,4 @@
 </script>
 </body>
 </html>
+
