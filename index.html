@@ -152,6 +152,306 @@
     }
 
     function createMarkers() {
+    markers.forEach(m => map.removeLayer(m));
+    markers = allStoreData.map(store => {
+        const m = L.circleMarker([store.lat, store.lng], { 
+            radius: 10, 
+            fillColor: categoryColors[store.category] || "#777", 
+            color: "#fff", 
+            weight: 2, 
+            fillOpacity: 0.8 
+        });
+
+        const priceHtml = store.price ? `<div style="font-size:12px;color:red;font-weight:bold;margin-top:5px;">${store.price.split('/').join('<br>')}</div>` : "";
+        
+        // Googleマップアプリ/サイトを開くためのURL
+        const googleMapUrl = `https://www.google.com/maps/search/?api=1&query=${store.lat},${store.lng}`;
+
+        m.bindPopup(`
+            <strong>${store.name}</strong><br>
+            <small>${store.category}</small>
+            ${priceHtml}
+            <div style="display: flex; gap: 5px; margin-top: 8px;">
+                <a href="${googleMapUrl}" target="_blank" rel="noopener noreferrer" style="background: #1a73e8; color: white !important; padding: 8px; border-radius: 5px; flex: 1; text-align: center; text-decoration: none; font-size: 12px; font-weight: bold;">🗺️ Googleマップ</a>
+                <button class="popup-post-btn" onclick="openPostWithStore('${store.name}')" style="flex: 1; margin-top: 0;">💰 報告</button>
+            </div>
+        `);
+        m.storeData = store;
+        return m.addTo(map);
+    });
+}
+
+    function updateFilters() {
+        const search = document.getElementById('search-box').value.toLowerCase();
+        const list = document.getElementById('store-list-content');
+        list.innerHTML = "";
+        
+        const checkedCategories = Array.from(document.querySelectorAll('#category-filters input:checked')).map(cb => cb.value);
+        const allCheck = document.getElementById('all-check');
+        const totalCats = document.querySelectorAll('#category-filters input[type="checkbox"]').length;
+        if (allCheck) allCheck.checked = (checkedCategories.length === totalCats);
+
+        markers.forEach(m => {
+            const s = m.storeData;
+            const isCategoryVisible = checkedCategories.includes(s.category);
+            const isSearchMatch = s.name.toLowerCase().includes(search) || s.price.toLowerCase().includes(search);
+
+            if (isCategoryVisible && isSearchMatch) {
+                map.addLayer(m);
+                const card = document.createElement('div');
+                card.className = 'store-card';
+                card.innerHTML = `<div class="category-tag" style="background:${categoryColors[s.category] || '#777'}">${s.category}</div><div style="font-weight:bold;">${s.name}</div><div style="color:red; font-size:14px; margin-top:5px;">${s.price}</div><button onclick="openPostWithStore('${s.name}')" style="margin-top:8px; border:1px solid #1a73e8; color:#1a73e8; background:none; width:100%; border-radius:5px; padding:5px;">💰 報告</button>`;
+                list.appendChild(card);
+            } else {
+                map.removeLayer(m);
+            }
+        });
+    }
+
+    function setupCategoryMenu() {
+        const cats = [...new Set(allStoreData.map(d => d.category))].sort();
+        const container = document.getElementById('category-filters');
+        if(!container) return;
+        container.innerHTML = cats.map(c => `<label style="display:block;margin:5px 0;"><input type="checkbox" checked value="${c}" onchange="updateFilters()"> ${c}</label>`).join('');
+    }
+
+    function toggleMenu() { 
+        document.getElementById('menu').classList.toggle('show'); 
+    }
+
+    function toggleAllCategories(isChecked) {
+        document.querySelectorAll('#category-filters input[type="checkbox"]').forEach(cb => cb.checked = isChecked);
+        updateFilters();
+    }
+
+    function showPage(id, elm) { 
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); 
+        document.getElementById(id).classList.add('active'); 
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active-nav')); 
+        elm.classList.add('active-nav'); 
+        if(id==='map-page') setTimeout(() => map.invalidateSize(), 100); 
+        // ページ切り替え時にメニューを閉じる
+        document.getElementById('menu').classList.remove('show');
+    }
+
+    function openPostWithStore(name) { 
+        document.getElementById('post-store-name').value = name; 
+        showPage('post-page', document.querySelectorAll('.nav-item')[2]); 
+    }
+
+    function goToMyLocation() {
+    if (!navigator.geolocation) {
+        alert("お使いのブラウザは位置情報に対応していません。");
+        return;
+    }
+
+    // ローディング中であることを示す（任意で通知を入れると親切です）
+    navigator.geolocation.getCurrentPosition(
+        (p) => {
+            const ll = [p.coords.latitude, p.coords.longitude];
+            
+            // 現在地に青いマーカーを置く（既にある場合は一度消す処理を入れるとベター）
+            if (window.myLocMarker) map.removeLayer(window.myLocMarker);
+            window.myLocMarker = L.circleMarker(ll, {
+                radius: 8,
+                color: '#fff',
+                fillColor: '#1a73e8',
+                fillOpacity: 1,
+                weight: 2
+            }).addTo(map).bindTooltip("現在地", {permanent: false, direction: 'top'});
+
+            // 画面を現在地へ移動
+            map.flyTo(ll, 16, {
+                animate: true,
+                duration: 1.5 // 1.5秒かけてスムーズに移動
+            });
+        },
+        (error) => {
+            alert("位置情報の取得に失敗しました。設定を確認してください。");
+        },
+        { enableHighAccuracy: true } // 精度優先の設定
+    );
+}
+
+    async function submitData() {
+        const storeName = document.getElementById('post-store-name').value;
+        const itemName = document.getElementById('post-item-name').value;
+        const price = document.getElementById('post-price').value;
+        const memo = document.getElementById('post-memo').value;
+        if (!storeName || !itemName || !price) { alert("必須項目を入力してください"); return; }
+        const btn = document.getElementById('submit-btn');
+        btn.innerText = "送信中..."; btn.disabled = true;
+        try {
+            await fetch(gasUrl, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ storeName, itemName, price, memo }) });
+            let history = JSON.parse(localStorage.getItem('post_history') || "[]");
+            history.unshift(itemName);
+            localStorage.setItem('post_history', JSON.stringify([...new Set(history)].slice(0, 10)));
+            updateItemDatalist();
+            alert("投稿完了！反映をお待ちください。");
+            document.getElementById('post-item-name').value = ""; document.getElementById('post-price').value = ""; document.getElementById('post-memo').value = "";
+            showPage('map-page', document.querySelectorAll('.nav-item')[0]);
+        } catch (e) { alert("エラー"); }
+        finally { btn.innerText = "投稿する"; btn.disabled = false; }
+    }
+
+    loadData();
+</script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>豊橋お買い物マップ</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; padding: 0; font-family: sans-serif; background: #f0f2f5; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+        header { background: #fff; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); z-index: 6000; }
+        .search-container { display: flex; gap: 8px; }
+        #search-box { flex: 1; padding: 10px 15px; border-radius: 20px; border: 1px solid #ddd; font-size: 16px; outline: none; }
+        #menu-toggle { background: #1a73e8; color: #fff; border: none; border-radius: 20px; padding: 0 15px; font-weight: bold; }
+        .page { display: none; flex: 1; width: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .active { display: flex; flex-direction: column; }
+        #map { flex: 1; width: 100%; z-index: 1; }
+        #menu { position: fixed; top: 65px; right: 10px; z-index: 7000; background: white; width: 240px; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: none; }
+        #menu.show { display: block; }
+        .list-container { padding: 15px; }
+        .store-card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .category-tag { display: inline-block; padding: 3px 8px; border-radius: 10px; font-size: 10px; color: white; margin-bottom: 5px; font-weight: bold; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-size: 14px; color: #666; font-weight: bold; }
+        .form-group input, .form-group textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; font-size: 16px; }
+        .post-btn { background: #1a73e8; color: white; border: none; padding: 15px; border-radius: 8px; width: 100%; font-weight: bold; font-size: 16px; }
+        #footer-nav { height: 65px; background: #fff; display: flex; border-top: 1px solid #eee; z-index: 5000; padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: #5f6368; background: none; border: none; }
+        .nav-item.active-nav { color: #1a73e8; font-weight: bold; }
+        .nav-icon { font-size: 20px; margin-bottom: 2px; }
+        .location-btn { position: absolute; bottom: 20px; right: 20px; z-index: 1000; background: white; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 10px rgba(0,0,0,0.2); font-size: 24px; color: #1a73e8; }
+        .popup-post-btn { background: #34a853; color: white !important; padding: 8px; border-radius: 5px; width: 100%; border: none; margin-top: 8px; font-weight: bold; display: block; text-align: center; text-decoration: none; }
+        .memo-box { margin-top: 5px; padding: 5px; background: #f8f9fa; border-left: 3px solid #ccc; font-size: 11px; color: #558; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="search-container">
+        <input type="text" id="search-box" list="search-candidates" placeholder="店名や商品で検索..." oninput="updateFilters()">
+        <datalist id="search-candidates"></datalist>
+        <button id="menu-toggle" onclick="toggleMenu()">🔍 絞込</button>
+    </div>
+</header>
+
+<div id="menu">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <strong>カテゴリで絞り込み</strong>
+        <label style="font-size: 12px; color: #1a73e8; cursor: pointer;">
+            <input type="checkbox" id="all-check" checked onchange="toggleAllCategories(this.checked)"> 全選択
+        </label>
+    </div>
+    <hr>
+    <div id="category-filters"></div>
+</div>
+
+<div id="map-page" class="page active"><div id="map"></div><div class="location-btn" onclick="goToMyLocation()">📍</div></div>
+<div id="list-page" class="page"><div class="list-container"><h3>📋 店舗・底値一覧</h3><div id="store-list-content"></div></div></div>
+<div id="post-page" class="page">
+    <div style="padding: 20px;">
+        <h2 style="text-align:center;">💰 情報投稿</h2>
+        <div style="background:white; padding:20px; border-radius:15px;">
+            <div class="form-group">
+                <label>店名</label>
+                <input type="text" id="post-store-name" list="store-list-candidates" placeholder="店名を選択または入力">
+                <datalist id="store-list-candidates"></datalist>
+            </div>
+            <div class="form-group">
+                <label>商品名</label>
+                <input type="text" id="post-item-name" list="item-list-candidates" placeholder="商品名を選択または入力">
+                <datalist id="item-list-candidates"></datalist>
+            </div>
+            <div class="form-group">
+                <label>価格 (税抜)</label>
+                <input type="number" id="post-price" inputmode="numeric" placeholder="例：198">
+            </div>           
+            <div class="form-group">
+                <label>備考</label>
+                <textarea id="post-memo" placeholder="量やサイズなど"></textarea>
+            </div>
+            <button onclick="submitData()" id="submit-btn" class="post-btn">投稿する</button>
+        </div>
+    </div>
+</div>
+
+<nav id="footer-nav">
+    <button class="nav-item active-nav" onclick="showPage('map-page', this)"><span class="nav-icon">🗺️</span>地図</button>
+    <button class="nav-item" onclick="showPage('list-page', this)"><span class="nav-icon">📋</span>一覧</button>
+    <button class="nav-item" onclick="showPage('post-page', this)"><span class="nav-icon">➕</span>投稿</button>
+</nav>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTsb43W7oGI-uAyoWp19J1Z3WT3L48QW3TdJDIjseaTvLVtAMAfYX-sZNuLK6kuc2j2pbkLZ0I0p6Pp/pub?gid=0&single=true&output=csv';
+    const gasUrl = 'https://script.google.com/macros/s/AKfycbz4OHWsfJStoowmEINpTMAXYEWu71AW5e5VDDyBCWTpAg5jznhgyouLjM5C3YEvUDo/exec';
+
+    const categoryColors = { "スーパー": "#ff4757", "業務スーパー": "#2f3542", "ドラッグストア": "#2ed573", "JA": "#ffa502", "直販所": "#7bed9f", "八百屋": "#ff6348", "果物屋": "#eccc68", "魚屋": "#1e90ff" };
+    const fixedItems = ["たまご", "牛乳", "牛こま肉（100g単価）", "豚こま肉（100g単価）", "鶏もも肉（100g単価）", "鶏むね肉（100g単価）", "ささみ（100g単価）", "鶏皮（100g単価）", "砂肝（100g単価）", "豚あいびきミンチ（100g単価）", "鶏ももミンチ（100g単価）", "鶏むねミンチ（100g単価）", "豆腐", "あぶらあげ", "うどん", "長ネギ", "キャベツ", "にんじん", "じゃがいも", "玉ねぎ"];
+
+    let markers = [];
+    let allStoreData = [];
+    const map = L.map('map', { zoomControl: false }).setView([34.7628, 137.3817], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    function csvToArray(str) {
+        return str.split(/\r?\n/).map(row => {
+            let cols = [], current = "", inQuotes = false;
+            for (let c of row) {
+                if (c === '"') inQuotes = !inQuotes;
+                else if (c === ',' && !inQuotes) { cols.push(current); current = ""; }
+                else current += c;
+            }
+            cols.push(current); return cols;
+        });
+    }
+
+    function updateStoreDatalist() {
+        const postDatalist = document.getElementById('store-list-candidates');
+        const searchDatalist = document.getElementById('search-candidates');
+        const names = [...new Set(allStoreData.map(s => s.name))].sort();
+        
+        // 投稿用と検索用の両方のリストを更新
+        const options = names.map(n => `<option value="${n}">`).join('');
+        postDatalist.innerHTML = options;
+        searchDatalist.innerHTML = options + fixedItems.map(i => `<option value="${i}">`).join('');
+    }
+
+    function updateItemDatalist() {
+        const datalist = document.getElementById('item-list-candidates');
+        let history = JSON.parse(localStorage.getItem('post_history') || "[]");
+        const combined = [...new Set([...history, ...fixedItems])];
+        datalist.innerHTML = combined.map(i => `<option value="${i}">`).join('');
+    }
+
+    async function loadData() {
+        try {
+            const res = await fetch(csvUrl + '&t=' + Date.now());
+            const data = csvToArray(await res.text()).slice(1);
+            allStoreData = data.map(cols => ({
+                name: (cols[0] || "").trim(),
+                lat: parseFloat(cols[1]), 
+                lng: parseFloat(cols[2]),
+                category: (cols[5] || "未分類").trim(), 
+                price: cols[6] || ""
+            })).filter(d => !isNaN(d.lat));
+            
+            createMarkers();
+            setupCategoryMenu();
+            updateFilters();
+            updateStoreDatalist();
+            updateItemDatalist();
+        } catch (e) { console.error("データ読み込みエラー:", e); }
+    }
+
+    function createMarkers() {
         markers.forEach(m => map.removeLayer(m));
         markers = allStoreData.map(store => {
             const m = L.circleMarker([store.lat, store.lng], { radius: 10, fillColor: categoryColors[store.category] || "#777", color: "#fff", weight: 2, fillOpacity: 0.8 });
@@ -253,4 +553,5 @@
 </script>
 </body>
 </html>
+
 
