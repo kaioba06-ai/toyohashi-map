@@ -6,7 +6,6 @@
     <title>豊橋お買い物マップ</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        /* 前回のスタイルを継続 */
         body { margin: 0; padding: 0; font-family: sans-serif; background: #f0f2f5; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
         header { background: #fff; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); z-index: 6000; }
         .search-container { display: flex; gap: 8px; }
@@ -30,8 +29,6 @@
         .nav-icon { font-size: 20px; margin-bottom: 2px; }
         .location-btn { position: absolute; bottom: 20px; right: 20px; z-index: 1000; background: white; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 10px rgba(0,0,0,0.2); font-size: 24px; color: #1a73e8; }
         .popup-post-btn { background: #34a853; color: white !important; padding: 8px; border-radius: 5px; width: 100%; border: none; margin-top: 8px; font-weight: bold; display: block; text-align: center; text-decoration: none; }
-        
-        /* 備考欄用のスタイル */
         .memo-box { margin-top: 5px; padding: 5px; background: #f8f9fa; border-left: 3px solid #ccc; font-size: 11px; color: #558; }
     </style>
 </head>
@@ -39,7 +36,8 @@
 
 <header>
     <div class="search-container">
-        <input type="text" id="search-box" placeholder="店名や商品で検索..." oninput="updateFilters()">
+        <input type="text" id="search-box" list="search-candidates" placeholder="店名や商品で検索..." oninput="updateFilters()">
+        <datalist id="search-candidates"></datalist>
         <button id="menu-toggle" onclick="toggleMenu()">🔍 絞込</button>
     </div>
 </header>
@@ -116,9 +114,14 @@
     }
 
     function updateStoreDatalist() {
-        const datalist = document.getElementById('store-list-candidates');
+        const postDatalist = document.getElementById('store-list-candidates');
+        const searchDatalist = document.getElementById('search-candidates');
         const names = [...new Set(allStoreData.map(s => s.name))].sort();
-        datalist.innerHTML = names.map(n => `<option value="${n}">`).join('');
+        
+        // 投稿用と検索用の両方のリストを更新
+        const options = names.map(n => `<option value="${n}">`).join('');
+        postDatalist.innerHTML = options;
+        searchDatalist.innerHTML = options + fixedItems.map(i => `<option value="${i}">`).join('');
     }
 
     function updateItemDatalist() {
@@ -132,111 +135,98 @@
         try {
             const res = await fetch(csvUrl + '&t=' + Date.now());
             const data = csvToArray(await res.text()).slice(1);
-　　 allStoreData = data.map(cols => ({
- 　　   name: (cols[0] || "").trim(),
-  　　  lat: parseFloat(cols[1]), 
-  　　  lng: parseFloat(cols[2]),
-   　　 category: (cols[5] || "未分類").trim(), 
-   　　 price: cols[6] || "" // ここに "198円 (たまご) [夕方セール]" が丸ごと入る
-　　})).filter(d => !isNaN(d.lat));
+            allStoreData = data.map(cols => ({
+                name: (cols[0] || "").trim(),
+                lat: parseFloat(cols[1]), 
+                lng: parseFloat(cols[2]),
+                category: (cols[5] || "未分類").trim(), 
+                price: cols[6] || ""
+            })).filter(d => !isNaN(d.lat));
+            
             createMarkers();
             setupCategoryMenu();
             updateFilters();
             updateStoreDatalist();
             updateItemDatalist();
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error("データ読み込みエラー:", e); }
     }
 
     function createMarkers() {
         markers.forEach(m => map.removeLayer(m));
         markers = allStoreData.map(store => {
             const m = L.circleMarker([store.lat, store.lng], { radius: 10, fillColor: categoryColors[store.category] || "#777", color: "#fff", weight: 2, fillOpacity: 0.8 });
-            
-            // 備考がある場合のみHTMLを作成
-            const memoHtml = store.memo ? `<div class="memo-box">📝 ${store.memo}</div>` : "";
             const priceHtml = store.price ? `<div style="font-size:12px;color:red;font-weight:bold;margin-top:5px;">${store.price.split('/').join('<br>')}</div>` : "";
-
-            m.bindPopup(`
-                <strong>${store.name}</strong><br>
-                <small>${store.category}</small>
-                ${priceHtml}
-                ${memoHtml}
-                <button class="popup-post-btn" onclick="openPostWithStore('${store.name}')">💰 報告</button>
-            `);
+            m.bindPopup(`<strong>${store.name}</strong><br><small>${store.category}</small>${priceHtml}<button class="popup-post-btn" onclick="openPostWithStore('${store.name}')">💰 報告</button>`);
             m.storeData = store;
             return m.addTo(map);
         });
     }
 
-function updateFilters() {
-    const search = document.getElementById('search-box').value.toLowerCase();
-    const list = document.getElementById('store-list-content');
-    list.innerHTML = "";
-
-    // 1. 現在チェックが入っているカテゴリをリストアップする
-    const checkedCategories = Array.from(document.querySelectorAll('#category-filters input:checked'))
-                                   .map(cb => cb.value);
-
-    // 2. 「全選択」チェックボックスの表示を今の状態に合わせる
-    const allCheck = document.getElementById('all-check');
-    const totalCategories = document.querySelectorAll('#category-filters input[type="checkbox"]').length;
-    if (allCheck) {
-        allCheck.checked = checkedCategories.length === totalCategories;
-    }
-
-    // 3. マーカーとリストを一括で更新する
-    markers.forEach(m => {
-        const s = m.storeData;
+    function updateFilters() {
+        const search = document.getElementById('search-box').value.toLowerCase();
+        const list = document.getElementById('store-list-content');
+        list.innerHTML = "";
         
-        // 「カテゴリが選ばれているか」かつ「検索ワードにヒットするか」を判定
-        const isCategoryVisible = checkedCategories.includes(s.category);
-        const isSearchMatch = s.name.toLowerCase().includes(search) || 
-                              s.price.toLowerCase().includes(search) || 
-                              (s.memo && s.memo.toLowerCase().includes(search));
+        const checkedCategories = Array.from(document.querySelectorAll('#category-filters input:checked')).map(cb => cb.value);
+        const allCheck = document.getElementById('all-check');
+        const totalCats = document.querySelectorAll('#category-filters input[type="checkbox"]').length;
+        if (allCheck) allCheck.checked = (checkedCategories.length === totalCats);
 
-        if (isCategoryVisible && isSearchMatch) {
-            // 地図に表示
-            map.addLayer(m);
-            
-            // 一覧画面にカードを追加
-            const memoHtml = s.memo ? `<div class="memo-box">📝 ${s.memo}</div>` : "";
-            const card = document.createElement('div');
-            card.className = 'store-card';
-            card.innerHTML = `
-                <div class="category-tag" style="background:${categoryColors[s.category] || '#777'}">${s.category}</div>
-                <div style="font-weight:bold;">${s.name}</div>
-                <div style="color:red; font-size:14px; margin-top:5px;">${s.price}</div>
-                ${memoHtml}
-                <button onclick="openPostWithStore('${s.name}')" style="margin-top:8px; border:1px solid #1a73e8; color:#1a73e8; background:none; width:100%; border-radius:5px; padding:5px;">💰 報告</button>
-            `;
-            list.appendChild(card);
-        } else {
-            // 条件に合わなければ地図から消す
-            map.removeLayer(m);
-        }
-    });
-}
+        markers.forEach(m => {
+            const s = m.storeData;
+            const isCategoryVisible = checkedCategories.includes(s.category);
+            const isSearchMatch = s.name.toLowerCase().includes(search) || s.price.toLowerCase().includes(search);
+
+            if (isCategoryVisible && isSearchMatch) {
+                map.addLayer(m);
+                const card = document.createElement('div');
+                card.className = 'store-card';
+                card.innerHTML = `<div class="category-tag" style="background:${categoryColors[s.category] || '#777'}">${s.category}</div><div style="font-weight:bold;">${s.name}</div><div style="color:red; font-size:14px; margin-top:5px;">${s.price}</div><button onclick="openPostWithStore('${s.name}')" style="margin-top:8px; border:1px solid #1a73e8; color:#1a73e8; background:none; width:100%; border-radius:5px; padding:5px;">💰 報告</button>`;
+                list.appendChild(card);
+            } else {
+                map.removeLayer(m);
+            }
+        });
+    }
 
     function setupCategoryMenu() {
-       const cats = [...new Set(allStoreData.map(d => d.category))].sort();
-       const container = document.getElementById('category-filters');
-       // 各チェックボックスが個別に操作されたときもupdateFiltersを呼ぶ
-       container.innerHTML = cats.map(c => `
-         <label style="display:block;margin:5px 0;">
-             <input type="checkbox" checked value="${c}" onchange="updateFilters()"> ${c}
-         </label>
-    `).join('');
+        const cats = [...new Set(allStoreData.map(d => d.category))].sort();
+        const container = document.getElementById('category-filters');
+        if(!container) return;
+        container.innerHTML = cats.map(c => `<label style="display:block;margin:5px 0;"><input type="checkbox" checked value="${c}" onchange="updateFilters()"> ${c}</label>`).join('');
     }
-    function openPostWithStore(name) { document.getElementById('post-store-name').value = name; showPage('post-page', document.querySelectorAll('.nav-item')[2]); }
-    function showPage(id, elm) { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.getElementById(id).classList.add('active'); document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active-nav')); elm.classList.add('active-nav'); if(id==='map-page') setTimeout(() => map.invalidateSize(), 100); }
+
+    function toggleMenu() { 
+        document.getElementById('menu').classList.toggle('show'); 
+    }
+
     function toggleAllCategories(isChecked) {
-    const checkboxes = document.querySelectorAll('#category-filters input[type="checkbox"]');
-    checkboxes.forEach(cb => {
-        cb.checked = isChecked;
-    });
-    updateFilters(); // 状態を反映
+        document.querySelectorAll('#category-filters input[type="checkbox"]').forEach(cb => cb.checked = isChecked);
+        updateFilters();
     }
-    function goToMyLocation() { navigator.geolocation.getCurrentPosition(p => { const ll = [p.coords.latitude, p.coords.longitude]; L.circleMarker(ll, {radius:7, color:'#1a73e8'}).addTo(map); map.flyTo(ll, 16); }); }
+
+    function showPage(id, elm) { 
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); 
+        document.getElementById(id).classList.add('active'); 
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active-nav')); 
+        elm.classList.add('active-nav'); 
+        if(id==='map-page') setTimeout(() => map.invalidateSize(), 100); 
+        // ページ切り替え時にメニューを閉じる
+        document.getElementById('menu').classList.remove('show');
+    }
+
+    function openPostWithStore(name) { 
+        document.getElementById('post-store-name').value = name; 
+        showPage('post-page', document.querySelectorAll('.nav-item')[2]); 
+    }
+
+    function goToMyLocation() { 
+        navigator.geolocation.getCurrentPosition(p => { 
+            const ll = [p.coords.latitude, p.coords.longitude]; 
+            L.circleMarker(ll, {radius:7, color:'#1a73e8'}).addTo(map); 
+            map.flyTo(ll, 16); 
+        }); 
+    }
 
     async function submitData() {
         const storeName = document.getElementById('post-store-name').value;
@@ -258,8 +248,8 @@ function updateFilters() {
         } catch (e) { alert("エラー"); }
         finally { btn.innerText = "投稿する"; btn.disabled = false; }
     }
+
     loadData();
 </script>
 </body>
 </html>
-
