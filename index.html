@@ -122,15 +122,22 @@
         }).join('');
     }
 
-    function initMap() {
-        // コンテナが存在するか確認してから初期化
+function initMap() {
         const mapContainer = document.getElementById('map');
         if (!mapContainer) return;
 
+        // すでにマップがある場合は一度削除（二重初期化エラー防止）
+        if (map != undefined) { map.remove(); }
+
         map = L.map('map', { zoomControl: false, tap: false }).setView([34.7628, 137.3817], 14);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
+        
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
+        
+        // 少し遅らせてサイズを確定させる
+        setTimeout(() => { map.invalidateSize(); }, 500);
         
         loadData();
     }
@@ -269,3 +276,4 @@
 </script>
 </body>
 </html>
+
