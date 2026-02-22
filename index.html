@@ -76,7 +76,9 @@
                 <h2 style="margin:0; font-size: 18px;">価格を投稿</h2>
                 <div class="input-group"><label>店舗名</label><input id="post-store-name" list="store-list" placeholder="店名を選択または入力"><datalist id="store-list"></datalist></div>
                 <div class="input-group"><label>商品名</label><input id="post-item-name" list="item-list" placeholder="商品を選択または入力"><datalist id="item-list"></datalist></div>
-                <div class="input-group"><label>価格 (税抜)</label><input id="post-price" type="number" placeholder="198"></div>
+              　 <div class="input-group"><label>価格 (税抜)</label>
+   　　　　　　　　　 <input id="post-price" type="number" inputmode="numeric" pattern="\d*" placeholder="198">
+　　　　　　　　　</div>
                 <div class="input-group"><label>備考</label><input id="post-note" placeholder="例：10個入"></div>
                 <button id="submit-btn" style="background:#0061A4; color:white; padding:14px; border-radius:999px; border:none; font-weight:bold; margin-top: 5px;" onclick="submitData()">投稿を送信する</button>
             </div>
@@ -201,15 +203,26 @@
     function openPostWithStore(name) { document.getElementById('post-store-name').value = name; showPage('post-page', document.getElementById('btn-post')); }
 
     async function submitData() {
-    const storeName = document.getElementById('post-store-name').value;
-    const itemName = document.getElementById('post-item-name').value;
+    const storeName = document.getElementById('post-store-name').value.trim();
+    const itemName = document.getElementById('post-item-name').value.trim();
     const price = document.getElementById('post-price').value;
     const note = document.getElementById('post-note').value;
 
-    // 入力チェック
+    // 基本入力チェック
     if (!storeName || !itemName || !price) {
         alert("店舗名、商品名、価格は必須入力です。");
         return;
+    }
+
+    // --- 店舗名チェック ---
+    const existingStores = allStoreData.map(s => s.name);
+    const isStoreExists = existingStores.includes(storeName);
+
+    if (!isStoreExists) {
+        // エラーを表示するが、処理は止めずに警告だけ出す、もしくは中断するか選べます
+        // ここでは「エラーを表示して中断」する設定にします
+        alert("⚠️ 店舗情報がありません。\n正しい店舗名を選択するか、管理者に店舗追加を依頼してください。");
+        return; 
     }
 
     const b = document.getElementById('submit-btn');
@@ -218,36 +231,28 @@
     b.disabled = true;
 
     try {
-        // GASへ送信
         await fetch(gasUrl, {
             method: "POST",
             mode: "no-cors",
             body: JSON.stringify({ storeName, itemName, price, note })
         });
 
-        // --- ここから利便性向上のための処理 ---
-        
-        // 1 & 2. マップに戻らず、店舗名以外をリセット
+        // 成功後の処理（店舗名は残し、他をクリア）
         document.getElementById('post-item-name').value = "";
         document.getElementById('post-price').value = "";
         document.getElementById('post-note').value = "";
-
-        // 3. 次の入力のため「商品名」にカーソルを合わせる
         document.getElementById('post-item-name').focus();
 
-        // 完了を知らせる（ボタンの色を一瞬変えるなどの演出）
-        b.innerText = "送信完了！続けて入力できます";
-        b.style.background = "#059669"; // 緑色に
+        b.innerText = "送信完了！次を入力";
+        b.style.background = "#059669";
 
-        // 2秒後にボタンを元に戻す
         setTimeout(() => {
             b.innerText = originalText;
             b.style.background = "#0061A4";
             b.disabled = false;
         }, 2000);
 
-        // 裏側で最新データを読み込み直す（リストやマップを更新するため）
-        loadData();
+        loadData(); // 裏側で更新
 
     } catch (e) {
         alert("送信エラーが発生しました。");
@@ -255,10 +260,10 @@
         b.disabled = false;
     }
 }
-
     function goToMyLocation() { if (navigator.geolocation) { navigator.geolocation.getCurrentPosition(p => map.flyTo([p.coords.latitude, p.coords.longitude], 16)); } }
     window.onload = initMap;
 </script>
 </body>
 </html>
+
 
