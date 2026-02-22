@@ -30,9 +30,32 @@
     .my-location-btn { position: absolute; bottom: 15px; right: 15px; z-index: 1000; width: 44px; height: 44px; border-radius: 12px; background: white; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; }
 
     /* 投稿フォーム（ラベルと入力欄の間隔を最小化） */
-    .post-form { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-    .input-group { display: flex; flex-direction: column; gap: 0; } /* 隙間を0に */
-    .input-group label { font-size: 12px; font-weight: 800; color: #475569; margin-left: 4px; margin-bottom: 2px; }
+/* 1. 項目（店舗名、商品名、価格...）同士の間隔を調整 */
+.post-form { 
+    padding: 16px; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 14px; /* ここが項目間の距離です。お好みで微調整してください */
+}
+
+/* 2. ラベルと入力欄を完全に密着させる設定 */
+.input-group { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 0 !important; /* 強制的に隙間をゼロに */
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* 3. ラベル自体の余計な余白を削る */
+.input-group label { 
+    font-size: 12px; 
+    font-weight: 800; 
+    color: #475569; 
+    margin: 0 0 2px 4px !important; /* 下(bottom)を2pxだけ空けて、左に4pxずらす */
+    padding: 0 !important;
+    line-height: 1.2; /* 行間を詰め、青い選択範囲を小さくする */
+}
     
     .post-form input { 
         width: 100%; 
@@ -293,6 +316,7 @@
 </script>
 </body>
 </html>
+
 
 
 
