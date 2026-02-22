@@ -3,56 +3,60 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
-    <title>豊橋お買い物マップ - 完成版</title>
+    <title>豊橋お買い物マップ - 最適化版</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-25..0" rel="stylesheet"/>
     <style>
         body { font-family: sans-serif; margin: 0; padding: 0; background: #f8fafc; display: flex; justify-content: center; height: 100dvh; overflow: hidden; }
         .app-container { width: 100%; max-width: 430px; background: white; position: relative; display: flex; flex-direction: column; height: 100%; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
-        header { padding: 12px; background: white; border-bottom: 1px solid #e2e8f0; z-index: 5000; flex-shrink: 0; position: relative; }
-        .search-bar { display: flex; align-items: center; background: #f1f5f9; border-radius: 999px; padding: 6px 12px; border: 1px solid #e2e8f0; }
+        
+        /* ヘッダー周り */
+        header { padding: 10px 12px; background: white; border-bottom: 1px solid #e2e8f0; z-index: 5000; flex-shrink: 0; }
+        .search-bar { display: flex; align-items: center; background: #f1f5f9; border-radius: 999px; padding: 4px 12px; border: 1px solid #e2e8f0; }
         .search-bar input { border: none; background: transparent; flex: 1; padding: 6px; outline: none; font-size: 14px; }
-        #search-suggest { position: absolute; top: 100%; left: 12px; right: 12px; background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); max-height: 250px; overflow-y: auto; z-index: 6000; display: none; margin-top: 5px; border: 1px solid #e2e8f0; }
-        .suggest-item { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
-        .suggest-name { font-weight: bold; font-size: 14px; color: #1e293b; display: block; }
-
-        .category-scroll { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0 4px; scrollbar-width: none; }
+        
+        .category-scroll { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 2px; scrollbar-width: none; }
         .category-scroll::-webkit-scrollbar { display: none; }
-        .chip { padding: 6px 16px; border-radius: 999px; background: white; border: 1px solid #e2e8f0; font-size: 11px; font-weight: bold; white-space: nowrap; color: #64748b; cursor: pointer; transition: all 0.2s; }
-        .chip.active { background: #0061A4; color: white; border-color: #0061A4; box-shadow: 0 2px 8px rgba(0, 97, 164, 0.3); }
+        .chip { padding: 5px 14px; border-radius: 999px; background: white; border: 1px solid #e2e8f0; font-size: 11px; font-weight: bold; white-space: nowrap; color: #64748b; cursor: pointer; }
+        .chip.active { background: #0061A4; color: white; border-color: #0061A4; }
 
         .content { flex: 1; position: relative; overflow: hidden; }
         .page { position: absolute; inset: 0; background: white; display: none; overflow-y: auto; }
         .page.active { display: flex; flex-direction: column; }
         #map { width: 100%; height: 100%; z-index: 1; }
-        .my-location-btn { position: absolute; bottom: 20px; right: 16px; z-index: 1000; width: 48px; height: 48px; border-radius: 14px; background: white; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; }
-        .custom-pin span { -webkit-text-stroke: 1.2px white; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4)); font-variation-settings: 'FILL' 1; }
-        .store-card { margin: 12px 16px; border-radius: 20px; border: 1px solid #e2e8f0; background: white; overflow: hidden; }
-        .card-price { padding: 12px; color: #dc2626; font-weight: bold; font-size: 14px; background: #fffbff; border-bottom: 1px solid #f1f5f9; }
-        .card-btns { padding: 10px; display: flex; gap: 8px; background: #f8fafc; }
-        .btn { flex: 1; padding: 10px; border-radius: 12px; border: none; font-weight: bold; font-size: 11px; cursor: pointer; text-align: center; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 4px; }
         
-        nav { display: flex; border-top: 1px solid #e2e8f0; padding: 8px 0 25px; background: white; z-index: 5000; flex-shrink: 0; }
-        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; border: none; background: none; color: #94a3b8; cursor: pointer; }
-        .nav-item.active { color: #0061A4; }
-        .nav-icon { width: 56px; height: 30px; border-radius: 16px; display: flex; align-items: center; justify-content: center; }
-        .nav-item.active .nav-icon { background: #dbeafe; }
+        .my-location-btn { position: absolute; bottom: 15px; right: 15px; z-index: 1000; width: 44px; height: 44px; border-radius: 12px; background: white; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; }
 
-        .post-form { padding: 20px; display: flex; flex-direction: column; gap: 18px; }
-        .input-group { display: flex; flex-direction: column; gap: 5px; }
-        .input-group label { font-size: 11px; font-weight: bold; color: #64748b; margin-left: 5px; }
-        .post-form input { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid #e2e8f0; background: #f1f5f9; box-sizing: border-box; font-size: 14px; }
+        /* フッターのコンパクト化 */
+        nav { display: flex; border-top: 1px solid #e2e8f0; padding: 4px 0 15px; background: white; z-index: 5000; flex-shrink: 0; }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; border: none; background: none; color: #94a3b8; cursor: pointer; padding: 4px 0; }
+        .nav-item.active { color: #0061A4; }
+        .nav-icon { width: 48px; height: 26px; border-radius: 14px; display: flex; align-items: center; justify-content: center; }
+        .nav-item.active .nav-icon { background: #dbeafe; }
+        .nav-text { font-size: 9px; font-weight: bold; }
+        .nav-item .material-symbols-outlined { font-size: 22px; }
+
+        /* カード・フォーム関連 */
+        .store-card { margin: 10px 12px; border-radius: 16px; border: 1px solid #e2e8f0; background: white; overflow: hidden; }
+        .card-price { padding: 10px; color: #dc2626; font-weight: bold; font-size: 13px; background: #fffbff; border-bottom: 1px solid #f1f5f9; }
+        .card-btns { padding: 8px; display: flex; gap: 6px; background: #f8fafc; }
+        .btn { flex: 1; padding: 8px; border-radius: 10px; border: none; font-weight: bold; font-size: 11px; cursor: pointer; text-align: center; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 4px; }
+        .post-form { padding: 15px; display: flex; flex-direction: column; gap: 15px; }
+        .input-group { display: flex; flex-direction: column; gap: 4px; }
+        .input-group label { font-size: 10px; font-weight: bold; color: #64748b; margin-left: 4px; }
+        .post-form input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0; background: #f1f5f9; box-sizing: border-box; font-size: 14px; }
+        .custom-pin span { -webkit-text-stroke: 1px white; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3)); font-variation-settings: 'FILL' 1; }
     </style>
 </head>
 <body>
 
-<div class="app-container" onclick="closeSuggest()">
-    <header onclick="event.stopPropagation()">
+<div class="app-container">
+    <header>
         <div class="search-bar">
-            <span class="material-symbols-outlined" style="color:#94a3b8">search</span>
-            <input id="search-box" type="text" placeholder="店名や商品を検索" oninput="handleSearch(this.value)">
+            <span class="material-symbols-outlined" style="color:#94a3b8; font-size: 20px;">search</span>
+            <input id="search-box" type="text" list="search-list" placeholder="店名や商品を検索" oninput="updateFilters()" onchange="handleListSelect(this.value)">
+            <datalist id="search-list"></datalist>
         </div>
-        <div id="search-suggest"></div>
         <div id="category-chips" class="category-scroll"></div>
     </header>
 
@@ -63,45 +67,31 @@
         </div>
 
         <div id="list-page" class="page">
-            <div id="list-count" style="padding:15px; font-weight:bold; font-size:12px; color:#64748b"></div>
+            <div id="list-count" style="padding:12px; font-weight:bold; font-size:11px; color:#64748b"></div>
             <div id="store-list-content"></div>
         </div>
 
         <div id="post-page" class="page">
             <div class="post-form">
-                <h2 style="margin:0; font-size: 20px;">価格を投稿</h2>
-                <div class="input-group">
-                    <label>店舗名</label>
-                    <input id="post-store-name" list="store-list" placeholder="店名を選択または入力">
-                    <datalist id="store-list"></datalist>
-                </div>
-                <div class="input-group">
-                    <label>商品名</label>
-                    <input id="post-item-name" list="item-list" placeholder="商品を選択または入力">
-                    <datalist id="item-list"></datalist>
-                </div>
-                <div class="input-group">
-                    <label>価格 (税抜)</label>
-                    <input id="post-price" type="number" placeholder="198">
-                </div>
-                <div class="input-group">
-                    <label>備考</label>
-                    <input id="post-note" placeholder="例：10個入、お一人様1点限り">
-                </div>
-                <button id="submit-btn" style="background:#0061A4; color:white; padding:16px; border-radius:999px; border:none; font-weight:bold; margin-top: 10px;" onclick="submitData()">投稿を送信する</button>
+                <h2 style="margin:0; font-size: 18px;">価格を投稿</h2>
+                <div class="input-group"><label>店舗名</label><input id="post-store-name" list="store-list" placeholder="店名を選択または入力"><datalist id="store-list"></datalist></div>
+                <div class="input-group"><label>商品名</label><input id="post-item-name" list="item-list" placeholder="商品を選択または入力"><datalist id="item-list"></datalist></div>
+                <div class="input-group"><label>価格 (税抜)</label><input id="post-price" type="number" placeholder="198"></div>
+                <div class="input-group"><label>備考</label><input id="post-note" placeholder="例：10個入"></div>
+                <button id="submit-btn" style="background:#0061A4; color:white; padding:14px; border-radius:999px; border:none; font-weight:bold; margin-top: 5px;" onclick="submitData()">投稿を送信する</button>
             </div>
         </div>
     </div>
 
     <nav>
         <button id="btn-map" class="nav-item active" onclick="showPage('map-page', this)">
-            <div class="nav-icon"><span class="material-symbols-outlined">map</span></div><span style="font-size:10px; font-weight:bold;">マップ</span>
+            <div class="nav-icon"><span class="material-symbols-outlined">map</span></div><span class="nav-text">マップ</span>
         </button>
         <button id="btn-list" class="nav-item" onclick="showPage('list-page', this)">
-            <div class="nav-icon"><span class="material-symbols-outlined">format_list_bulleted</span></div><span style="font-size:10px; font-weight:bold;">リスト</span>
+            <div class="nav-icon"><span class="material-symbols-outlined">format_list_bulleted</span></div><span class="nav-text">リスト</span>
         </button>
         <button id="btn-post" class="nav-item" onclick="showPage('post-page', this)">
-            <div class="nav-icon"><span class="material-symbols-outlined">add_circle</span></div><span style="font-size:10px; font-weight:bold;">投稿</span>
+            <div class="nav-icon"><span class="material-symbols-outlined">add_circle</span></div><span class="nav-text">投稿</span>
         </button>
     </nav>
 </div>
@@ -111,13 +101,7 @@
     const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTsb43W7oGI-uAyoWp19J1Z3WT3L48QW3TdJDIjseaTvLVtAMAfYX-sZNuLK6kuc2j2pbkLZ0I0p6Pp/pub?gid=0&single=true&output=csv';
     const gasUrl = 'https://script.google.com/macros/s/AKfycbz4OHWsfJStoowmEINpTMAXYEWu71AW5e5VDDyBCWTpAg5jznhgyouLjM5C3YEvUDo/exec';
 
-    const fixedItems = [
-        "たまご", "牛乳", "牛こま肉（100g単価）", "豚こま肉（100g単価）", "鶏もも肉（100g単価）",
-        "鶏むね肉（100g単価）", "ささみ（100g単価）", "鶏皮（100g単価）", "砂肝（100g単価）",
-        "豚あいびきミンチ（100g単価）", "鶏ももミンチ（100g単価）", "鶏むねミンチ（100g単価）",
-        "豆腐", "あぶらあげ", "うどん", "長ネギ", "キャベツ", "にんじん", "じゃがいも", "玉ねぎ"
-    ];
-
+    const fixedItems = ["たまご", "牛乳", "牛こま肉（100g単価）", "豚こま肉（100g単価）", "鶏もも肉（100g単価）", "鶏むね肉（100g単価）", "ささみ（100g単価）", "鶏皮（100g単価）", "砂肝（100g単価）", "豚あいびきミンチ（100g単価）", "鶏ももミンチ（100g単価）", "鶏むねミンチ（100g単価）", "豆腐", "あぶらあげ", "うどん", "長ネギ", "キャベツ", "にんじん", "じゃがいも", "玉ねぎ"];
     const categoryColors = { "スーパー": "#34a853", "ドラッグストア": "#d93025", "JA": "#ffa502", "デフォルト": "#0061A4" };
     let map, markers = [], allStoreData = [], currentCategory = "すべて";
 
@@ -132,153 +116,89 @@
             const res = await fetch(csvUrl + '&t=' + Date.now());
             const text = await res.text();
             const rows = text.split(/\r?\n/).slice(1);
-            
             const pastItemCounts = {};
+            
             allStoreData = rows.map(row => {
                 const c = row.split(',');
-                const name = c[0];
                 const priceInfo = c[6] || "";
                 if (priceInfo) {
                     priceInfo.split('/').forEach(p => {
-                        const itemName = p.split(':')[0]?.trim();
-                        if (itemName) pastItemCounts[itemName] = (pastItemCounts[itemName] || 0) + 1;
+                        const itm = p.split(':')[0]?.trim();
+                        if (itm) pastItemCounts[itm] = (pastItemCounts[itm] || 0) + 1;
                     });
                 }
-                return { name, lat: parseFloat(c[1]), lng: parseFloat(c[2]), category: c[5] || "未分類", price: priceInfo };
+                return { name: c[0], lat: parseFloat(c[1]), lng: parseFloat(c[2]), category: c[5] || "未分類", price: priceInfo };
             }).filter(d => !isNaN(d.lat));
             
-            const storeDatalist = document.getElementById('store-list');
+            // 店舗リスト（検索用と投稿用）
             const uniqueStoreNames = [...new Set(allStoreData.map(s => s.name))];
-            storeDatalist.innerHTML = uniqueStoreNames.map(name => `<option value="${name}">`).join('');
+            const storeOptions = uniqueStoreNames.map(name => `<option value="${name}">`).join('');
+            document.getElementById('search-list').innerHTML = storeOptions;
+            document.getElementById('store-list').innerHTML = storeOptions;
 
-            const pastFrequentItems = Object.keys(pastItemCounts)
-                .filter(name => !fixedItems.includes(name))
-                .sort((a, b) => pastItemCounts[b] - pastItemCounts[a])
-                .slice(0, 10);
-            
-            const fullItemList = [...fixedItems, ...pastFrequentItems];
-            document.getElementById('item-list').innerHTML = fullItemList.map(item => `<option value="${item}">`).join('');
+            // 商品リスト
+            const pastFrequent = Object.keys(pastItemCounts).filter(n => !fixedItems.includes(n)).sort((a,b) => pastItemCounts[b] - pastItemCounts[a]).slice(0, 10);
+            document.getElementById('item-list').innerHTML = [...fixedItems, ...pastFrequent].map(i => `<option value="${i}">`).join('');
 
             renderUI();
-        } catch (e) { console.error("データ読み込みエラー", e); }
+        } catch (e) { console.error(e); }
     }
 
     function renderUI() {
-        // 既存のマーカーを削除
         markers.forEach(m => map.removeLayer(m));
-        
-        // カテゴリチップの生成
         const categories = ["すべて", ...new Set(allStoreData.map(d => d.category))];
-        const chipContainer = document.getElementById('category-chips');
-        chipContainer.innerHTML = categories.map(cat => `
-            <div onclick="filterByCategory('${cat}')" class="chip ${currentCategory === cat ? 'active' : ''}">${cat}</div>
-        `).join('');
+        document.getElementById('category-chips').innerHTML = categories.map(cat => `<div onclick="filterByCategory('${cat}')" class="chip ${currentCategory === cat ? 'active' : ''}">${cat}</div>`).join('');
 
-        // 新しいマーカーを作成
         markers = allStoreData.map(s => {
             const color = categoryColors[s.category] || categoryColors["デフォルト"];
-            const icon = L.divIcon({
-                className: 'custom-icon',
-                html: `<div class="custom-pin"><span class="material-symbols-outlined" style="color:${color};font-size:34px;">location_on</span></div>`,
-                iconSize: [34, 34], iconAnchor: [17, 34]
-            });
+            const icon = L.divIcon({ className: 'custom-icon', html: `<div class="custom-pin"><span class="material-symbols-outlined" style="color:${color};font-size:32px;">location_on</span></div>`, iconSize: [32, 32], iconAnchor: [16, 32] });
             const m = L.marker([s.lat, s.lng], { icon });
-            const googleMapUrl = `https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lng}`;
-            m.bindPopup(`
-                <div style="min-width:150px">
-                    <b>${s.name}</b>
-                    <div style="color:red;font-weight:bold;margin:5px 0;font-size:13px;">${s.price.replace(/\//g, '<br>')}</div>
-                    <div style="display:flex;gap:5px;">
-                        <button onclick="openPostWithStore('${s.name}')" style="flex:1;background:#059669;color:white;border:none;padding:8px;border-radius:6px;font-size:10px;font-weight:bold;cursor:pointer;">投稿</button>
-                        <a href="${googleMapUrl}" target="_blank" style="flex:1;background:#0061A4;color:white;padding:8px;border-radius:6px;font-size:10px;font-weight:bold;text-align:center;text-decoration:none;">🚗 案内</a>
-                    </div>
-                </div>
-            `);
+            m.bindPopup(`<div style="min-width:140px"><b>${s.name}</b><div style="color:red;font-weight:bold;margin:4px 0;font-size:12px;">${s.price.replace(/\//g, '<br>')}</div><div style="display:flex;gap:4px;"><button onclick="openPostWithStore('${s.name}')" style="flex:1;background:#059669;color:white;border:none;padding:6px;border-radius:6px;font-size:10px;font-weight:bold;cursor:pointer;">投稿</button><a href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}" target="_blank" style="flex:1;background:#0061A4;color:white;padding:6px;border-radius:6px;font-size:10px;font-weight:bold;text-align:center;text-decoration:none;">🚗 案内</a></div></div>`);
             m.storeData = s;
             return m;
         });
-
         updateFilters();
     }
 
-    function filterByCategory(cat) {
-        currentCategory = cat;
-        renderUI();
-    }
-
-    function handleSearch(val) {
-        const suggest = document.getElementById('search-suggest');
-        if (!val) { suggest.style.display = 'none'; updateFilters(); return; }
-        const filtered = allStoreData.filter(s => s.name.includes(val) || s.price.includes(val)).slice(0, 10);
-        if (filtered.length > 0) {
-            suggest.innerHTML = filtered.map(s => `<div class="suggest-item" onclick="jumpToStore('${s.name}', ${s.lat}, ${s.lng})"><span class="suggest-name">${s.name}</span></div>`).join('');
-            suggest.style.display = 'block';
-        } else { suggest.style.display = 'none'; }
-        updateFilters();
-    }
-
-    function jumpToStore(name, lat, lng) {
-        document.getElementById('search-box').value = name;
-        closeSuggest(); 
-        showPage('map-page', document.getElementById('btn-map'));
-        map.flyTo([lat, lng], 17);
-        setTimeout(() => { 
-            const target = markers.find(m => m.storeData.name === name);
-            if (target) target.openPopup(); 
-        }, 500);
-    }
-
-    function closeSuggest() { document.getElementById('search-suggest').style.display = 'none'; }
+    function filterByCategory(cat) { currentCategory = cat; renderUI(); }
 
     function updateFilters() {
         const query = document.getElementById('search-box').value.toLowerCase();
         const listContent = document.getElementById('store-list-content');
-        listContent.innerHTML = ""; 
-        let count = 0;
+        listContent.innerHTML = ""; let count = 0;
         
         markers.forEach(m => {
             const s = m.storeData;
-            const match = (s.name.toLowerCase().includes(query) || s.price.toLowerCase().includes(query)) && 
-                          (currentCategory === "すべて" || s.category === currentCategory);
-            
+            const match = (s.name.toLowerCase().includes(query) || s.price.toLowerCase().includes(query)) && (currentCategory === "すべて" || s.category === currentCategory);
             if (match) {
-                map.addLayer(m); 
-                count++;
-                listContent.innerHTML += `
-                    <div class="store-card">
-                        <div style="padding:12px;border-bottom:1px solid #f1f5f9">
-                            <span style="font-size:10px;color:#94a3b8;font-weight:bold;">${s.category}</span>
-                            <div style="font-weight:bold;margin-top:2px;">${s.name}</div>
-                        </div>
-                        <div class="card-price">${s.price.replace(/\//g, '<br>')}</div>
-                        <div class="card-btns">
-                            <button class="btn" style="background:#eff6ff;color:#0061A4;" onclick="jumpToStore('${s.name}', ${s.lat}, ${s.lng})">🗺 地図</button>
-                            <a class="btn" style="background:#0061A4;color:white;" href="https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lng}" target="_blank">🚗 案内</a>
-                        </div>
-                    </div>`;
-            } else { 
-                map.removeLayer(m); 
-            }
+                map.addLayer(m); count++;
+                listContent.innerHTML += `<div class="store-card"><div style="padding:10px;border-bottom:1px solid #f1f5f9"><span style="font-size:9px;color:#94a3b8;font-weight:bold;">${s.category}</span><div style="font-weight:bold;font-size:14px;">${s.name}</div></div><div class="card-price">${s.price.replace(/\//g, '<br>')}</div><div class="card-btns"><button class="btn" style="background:#eff6ff;color:#0061A4;" onclick="jumpToStore('${s.name}', ${s.lat}, ${s.lng})">🗺 地図</button><a class="btn" style="background:#0061A4;color:white;" href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}" target="_blank">🚗 案内</a></div></div>`;
+            } else { map.removeLayer(m); }
         });
         document.getElementById('list-count').innerText = `${count}件表示中`;
+    }
+
+    // リストから選択されたらその店にジャンプ
+    function handleListSelect(val) {
+        const target = allStoreData.find(s => s.name === val);
+        if (target) jumpToStore(target.name, target.lat, target.lng);
+    }
+
+    function jumpToStore(name, lat, lng) {
+        showPage('map-page', document.getElementById('btn-map'));
+        map.flyTo([lat, lng], 17);
+        setTimeout(() => { const m = markers.find(m => m.storeData.name === name); if (m) m.openPopup(); }, 500);
     }
 
     function showPage(id, btn) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.getElementById(id).classList.add('active');
-        document.querySelectorAll('.nav-item').forEach(n => { 
-            n.classList.remove('active'); 
-            n.querySelector('.material-symbols-outlined').style.fontVariationSettings = "'FILL' 0"; 
-        });
-        btn.classList.add('active'); 
-        btn.querySelector('.material-symbols-outlined').style.fontVariationSettings = "'FILL' 1";
+        document.querySelectorAll('.nav-item').forEach(n => { n.classList.remove('active'); n.querySelector('.material-symbols-outlined').style.fontVariationSettings = "'FILL' 0"; });
+        btn.classList.add('active'); btn.querySelector('.material-symbols-outlined').style.fontVariationSettings = "'FILL' 1";
         if(id === 'map-page') setTimeout(() => map.invalidateSize(), 200);
     }
 
-    function openPostWithStore(name) { 
-        document.getElementById('post-store-name').value = name; 
-        showPage('post-page', document.getElementById('btn-post')); 
-    }
+    function openPostWithStore(name) { document.getElementById('post-store-name').value = name; showPage('post-page', document.getElementById('btn-post')); }
 
     async function submitData() {
         const storeName = document.getElementById('post-store-name').value;
@@ -286,23 +206,15 @@
         const price = document.getElementById('post-price').value;
         const note = document.getElementById('post-note').value;
         if (!storeName || !itemName || !price) return alert("入力してください");
-        const b = document.getElementById('submit-btn'); 
-        b.innerText = "送信中..."; b.disabled = true;
+        const b = document.getElementById('submit-btn'); b.innerText = "送信中..."; b.disabled = true;
         try {
             await fetch(gasUrl, { method: "POST", mode: "no-cors", body: JSON.stringify({ storeName, itemName, price, note }) });
-            alert("投稿完了！"); 
-            loadData(); 
-            showPage('map-page', document.getElementById('btn-map'));
+            alert("投稿完了！"); loadData(); showPage('map-page', document.getElementById('btn-map'));
         } catch (e) { alert("エラー"); }
         b.innerText = "投稿を送信する"; b.disabled = false;
     }
 
-    function goToMyLocation() { 
-        if (navigator.geolocation) { 
-            navigator.geolocation.getCurrentPosition(p => map.flyTo([p.coords.latitude, p.coords.longitude], 16)); 
-        } 
-    }
-
+    function goToMyLocation() { if (navigator.geolocation) { navigator.geolocation.getCurrentPosition(p => map.flyTo([p.coords.latitude, p.coords.longitude], 16)); } }
     window.onload = initMap;
 </script>
 </body>
