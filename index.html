@@ -38,12 +38,15 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
         /* リストカード：3段構造 */
-        .store-card { @apply bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden; max-height: 350px; }
+        .store-card { @apply bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden; max-height: 380px; }
         .card-header { @apply p-3 bg-white border-b border-slate-50 shrink-0; }
         .card-body { @apply p-3 overflow-y-auto bg-white grow; }
         .card-footer { @apply p-3 bg-slate-50 border-t border-slate-100 shrink-0 flex gap-2; }
         
         .map-btn-white { color: white !important; }
+        
+        /* カッコ内の改行を禁止するクラス */
+        .no-wrap-bracket { display: inline-block; white-space: nowrap; }
     </style>
 </head>
 <body>
@@ -189,34 +192,37 @@
                 count++;
                 const gUrl = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
                 
-                // 商品情報の空白行を詰め、行間を狭く(leading-tight)設定
-                // updateFilters関数内の該当部分を以下のように修正・差し替え
+                // スペースを0にし、行間を極限まで詰める(leading-none)
+                // カッコ内の改行を防ぐ処理を追加
+                const formatText = (text) => {
+                    return text.replace(/[\/／]/g, '<br>')
+                               .replace(/ /g, '<br>')
+                               .split('<br>')
+                               .filter(l => l.trim() !== "")
+                               .map(l => `<div class="leading-none">${l.replace(/([\(（].*?[\)）])/g, '<span class="no-wrap-bracket">$1</span>')}</div>`)
+                               .join('');
+                };
 
-// 商品情報の空白行を完全にゼロにし、行間を極限まで詰める
-const formattedPrice = s.price
-    .replace(/[\/／]/g, '<br>') // スラッシュで改行
-    .replace(/ /g, '<br>')     // 半角スペースで改行
-    .split('<br>')             // 一旦分割して
-    .filter(line => line.trim() !== "") // 空行を除去
-    .join('</div><div class="leading-none">'); // 隙間なしのdivで結合
+                const formattedPrice = formatText(s.price);
+                const formattedNote = s.note.replace(/([\(（].*?[\)）])/g, '<span class="no-wrap-bracket">$1</span>');
 
-listContent.innerHTML += `
-    <div class="store-card">
-        <div class="card-header">
-            <span class="text-[9px] font-bold px-1.5 py-0.5 bg-slate-100 rounded text-slate-500 uppercase">${s.category}</span>
-            <h3 class="text-[14px] font-bold mt-0.5 text-slate-800">${s.name}</h3>
-        </div>
-        <div class="card-body">
-            <div class="text-[14px] font-bold text-price-red leading-none">
-                <div class="leading-none">${formattedPrice}</div>
-            </div>
-            ${s.note ? `<p class="text-[11px] text-slate-500 mt-1 border-l-2 border-slate-200 pl-2 italic leading-none">${s.note}</p>` : ''}
-        </div>
-        <div class="card-footer">
-            <a href="${gUrl}" target="_blank" class="flex-1 bg-slate-100 text-primary font-bold py-2.5 rounded-lg text-[11px] text-center border border-slate-200">🗺️ 案内を表示</a>
-            <button onclick="openPostWithStore('${s.name}')" class="flex-1 bg-success text-white font-bold py-2.5 rounded-lg text-[11px]">💰 価格を投稿</button>
-        </div>
-    </div>`;
+                listContent.innerHTML += `
+                    <div class="store-card">
+                        <div class="card-header">
+                            <span class="text-[9px] font-bold px-1.5 py-0.5 bg-slate-100 rounded text-slate-500 uppercase">${s.category}</span>
+                            <h3 class="text-[14px] font-bold mt-0.5 text-slate-800">${s.name}</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="text-[14px] font-bold text-price-red">
+                                ${formattedPrice}
+                            </div>
+                            ${s.note ? `<div class="text-[11px] text-slate-500 mt-1 border-l-2 border-slate-200 pl-2 italic leading-none">${formattedNote}</div>` : ''}
+                        </div>
+                        <div class="card-footer">
+                            <a href="${gUrl}" target="_blank" class="flex-1 bg-slate-100 text-primary font-bold py-2.5 rounded-lg text-[11px] text-center border border-slate-200">🗺️ 案内を表示</a>
+                            <button onclick="openPostWithStore('${s.name}')" class="flex-1 bg-success text-white font-bold py-2.5 rounded-lg text-[11px]">💰 価格を投稿</button>
+                        </div>
+                    </div>`;
             } else { map.removeLayer(m); }
         });
         document.getElementById('list-count').innerText = `${count}件表示中`;
@@ -283,4 +289,3 @@ listContent.innerHTML += `
 </script>
 </body>
 </html>
-
