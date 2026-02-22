@@ -35,7 +35,12 @@
             body { @apply font-display bg-background text-slate-900 antialiased overflow-hidden h-screen flex justify-center; }
         }
         #map { width: 100%; height: 100%; z-index: 1; }
-        .page { @apply absolute inset-0 flex flex-col bg-white hidden; z-index: 10; }
+        .page { 
+  　　　　　　  @apply absolute inset-0 flex flex-col bg-white hidden; 
+                z-index: 10; 
+                padding-top: 80px;    /* ヘッダーの高さ分空ける */
+                padding-bottom: 90px; /* フッターの高さ分空ける */
+            　}
         .page.active { @apply flex; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -48,19 +53,17 @@
 
 <div class="relative flex h-full w-full flex-col overflow-hidden max-w-[430px] bg-white shadow-2xl border-x border-slate-100">
     
-    <header class="absolute top-4 left-0 right-0 px-4 z-[1000]">
-        <div class="flex items-center bg-white/90 backdrop-blur-md shadow-lg rounded-full px-2 py-1.5 border border-slate-200">
-            <div class="flex items-center justify-center w-10 h-10 text-slate-500">
-                <span class="material-symbols-outlined">search</span>
-            </div>
-            <input id="search-box" oninput="updateFilters()" class="flex-1 bg-transparent border-none focus:ring-0 text-[16px] placeholder:text-slate-500" placeholder="お店や商品を検索" type="text"/>
-            <button onclick="toggleFilterMenu()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100">
-                <span class="material-symbols-outlined text-slate-600">tune</span>
-            </button>
+<header class="fixed top-0 left-0 right-0 z-[5000] px-4 pt-4 pb-2 bg-white/80 backdrop-blur-md border-b border-slate-100 max-w-[430px] mx-auto">
+    <div class="flex items-center bg-white shadow-sm rounded-full px-2 py-1.5 border border-slate-200">
+        <div class="flex items-center justify-center w-10 h-10 text-slate-500">
+            <span class="material-symbols-outlined">search</span>
         </div>
-        <div id="category-chips" class="flex gap-2 mt-3 overflow-x-auto no-scrollbar">
-            </div>
-    </header>
+        <input id="search-box" oninput="updateFilters()" class="flex-1 bg-transparent border-none focus:ring-0 text-[16px]" placeholder="お店や商品を検索" type="text"/>
+        <button onclick="toggleFilterMenu()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100">
+            <span class="material-symbols-outlined text-slate-600">tune</span>
+        </button>
+    </div>
+</header>
 
     <div id="map-page" class="page active">
         <div id="map"></div>
@@ -109,22 +112,22 @@
         </div>
     </div>
 
-    <nav class="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-slate-200 pb-8 pt-3 z-[2000]">
-        <div class="flex items-center justify-around max-w-sm mx-auto">
-            <button onclick="showPage('map-page', this)" class="nav-item flex flex-col items-center gap-1 text-primary">
-                <div class="flex items-center justify-center w-[64px] h-[32px] bg-primary-container rounded-full"><span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">map</span></div>
-                <span class="text-[12px] font-bold">マップ</span>
-            </button>
-            <button onclick="showPage('list-page', this)" class="nav-item flex flex-col items-center gap-1 text-secondary">
-                <div class="flex items-center justify-center w-[64px] h-[32px] rounded-full"><span class="material-symbols-outlined">format_list_bulleted</span></div>
-                <span class="text-[12px] font-medium">リスト</span>
-            </button>
-            <button onclick="showPage('post-page', this)" class="nav-item flex flex-col items-center gap-1 text-secondary">
-                <div class="flex items-center justify-center w-[64px] h-[32px] rounded-full"><span class="material-symbols-outlined">add_circle</span></div>
-                <span class="text-[12px] font-medium">投稿</span>
-            </button>
-        </div>
-    </nav>
+<nav class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-slate-200 pb-safe-area-bottom pt-3 z-[5000] max-w-[430px] mx-auto">
+    <div class="flex items-center justify-around">
+        <button onclick="showPage('map-page', this)" class="nav-item flex flex-col items-center gap-1 text-primary">
+            <div class="flex items-center justify-center w-[64px] h-[32px] bg-primary-container rounded-full"><span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">map</span></div>
+            <span class="text-[12px] font-bold">マップ</span>
+        </button>
+        <button onclick="showPage('list-page', this)" class="nav-item flex flex-col items-center gap-1 text-secondary">
+            <div class="flex items-center justify-center w-[64px] h-[32px] rounded-full"><span class="material-symbols-outlined">format_list_bulleted</span></div>
+            <span class="text-[12px] font-medium">リスト</span>
+        </button>
+        <button onclick="showPage('post-page', this)" class="nav-item flex flex-col items-center gap-1 text-secondary">
+            <div class="flex items-center justify-center w-[64px] h-[32px] rounded-full"><span class="material-symbols-outlined">add_circle</span></div>
+            <span class="text-[12px] font-medium">投稿</span>
+        </button>
+    </div>
+</nav>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -268,3 +271,4 @@
 </script>
 </body>
 </html>
+
