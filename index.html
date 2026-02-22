@@ -201,21 +201,64 @@
     function openPostWithStore(name) { document.getElementById('post-store-name').value = name; showPage('post-page', document.getElementById('btn-post')); }
 
     async function submitData() {
-        const storeName = document.getElementById('post-store-name').value;
-        const itemName = document.getElementById('post-item-name').value;
-        const price = document.getElementById('post-price').value;
-        const note = document.getElementById('post-note').value;
-        if (!storeName || !itemName || !price) return alert("入力してください");
-        const b = document.getElementById('submit-btn'); b.innerText = "送信中..."; b.disabled = true;
-        try {
-            await fetch(gasUrl, { method: "POST", mode: "no-cors", body: JSON.stringify({ storeName, itemName, price, note }) });
-            alert("投稿完了！"); loadData(); showPage('map-page', document.getElementById('btn-map'));
-        } catch (e) { alert("エラー"); }
-        b.innerText = "投稿を送信する"; b.disabled = false;
+    const storeName = document.getElementById('post-store-name').value;
+    const itemName = document.getElementById('post-item-name').value;
+    const price = document.getElementById('post-price').value;
+    const note = document.getElementById('post-note').value;
+
+    // 入力チェック
+    if (!storeName || !itemName || !price) {
+        alert("店舗名、商品名、価格は必須入力です。");
+        return;
     }
+
+    const b = document.getElementById('submit-btn');
+    const originalText = b.innerText;
+    b.innerText = "送信中...";
+    b.disabled = true;
+
+    try {
+        // GASへ送信
+        await fetch(gasUrl, {
+            method: "POST",
+            mode: "no-cors",
+            body: JSON.stringify({ storeName, itemName, price, note })
+        });
+
+        // --- ここから利便性向上のための処理 ---
+        
+        // 1 & 2. マップに戻らず、店舗名以外をリセット
+        document.getElementById('post-item-name').value = "";
+        document.getElementById('post-price').value = "";
+        document.getElementById('post-note').value = "";
+
+        // 3. 次の入力のため「商品名」にカーソルを合わせる
+        document.getElementById('post-item-name').focus();
+
+        // 完了を知らせる（ボタンの色を一瞬変えるなどの演出）
+        b.innerText = "送信完了！続けて入力できます";
+        b.style.background = "#059669"; // 緑色に
+
+        // 2秒後にボタンを元に戻す
+        setTimeout(() => {
+            b.innerText = originalText;
+            b.style.background = "#0061A4";
+            b.disabled = false;
+        }, 2000);
+
+        // 裏側で最新データを読み込み直す（リストやマップを更新するため）
+        loadData();
+
+    } catch (e) {
+        alert("送信エラーが発生しました。");
+        b.innerText = originalText;
+        b.disabled = false;
+    }
+}
 
     function goToMyLocation() { if (navigator.geolocation) { navigator.geolocation.getCurrentPosition(p => map.flyTo([p.coords.latitude, p.coords.longitude], 16)); } }
     window.onload = initMap;
 </script>
 </body>
 </html>
+
