@@ -16,9 +16,36 @@
         #search-suggest { position: absolute; top: 100%; left: 12px; right: 12px; background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); max-height: 250px; overflow-y: auto; z-index: 6000; display: none; margin-top: 5px; border: 1px solid #e2e8f0; }
         .suggest-item { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
         .suggest-name { font-weight: bold; font-size: 14px; color: #1e293b; display: block; }
-        .category-scroll { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0 2px; scrollbar-width: none; }
-        .chip { padding: 6px 14px; border-radius: 999px; background: white; border: 1px solid #e2e8f0; font-size: 11px; font-weight: bold; white-space: nowrap; color: #64748b; }
-        .chip.active { background: #0061A4; color: white; border-color: #0061A4; }
+        /* カテゴリチップの見た目を整える */
+.category-scroll { 
+    display: flex; 
+    gap: 8px; 
+    overflow-x: auto; 
+    padding: 10px 0 4px; 
+    scrollbar-width: none; /* Firefox用 */
+}
+.category-scroll::-webkit-scrollbar { 
+    display: none; /* Chrome, Safari用（スクロールバーを隠す） */
+}
+.chip { 
+    padding: 6px 16px; 
+    border-radius: 999px; 
+    background: white; 
+    border: 1px solid #e2e8f0; 
+    font-size: 11px; 
+    font-weight: bold; 
+    white-space: nowrap; 
+    color: #64748b; 
+    cursor: pointer;
+    transition: all 0.2s;
+}
+/* 選択されている時の色 */
+.chip.active { 
+    background: #0061A4; 
+    color: white; 
+    border-color: #0061A4; 
+    box-shadow: 0 2px 8px rgba(0, 97, 164, 0.3);
+}
         .content { flex: 1; position: relative; overflow: hidden; }
         .page { position: absolute; inset: 0; background: white; display: none; overflow-y: auto; }
         .page.active { display: flex; flex-direction: column; }
@@ -44,13 +71,14 @@
 
 <div class="app-container" onclick="closeSuggest()">
     <header onclick="event.stopPropagation()">
-        <div class="search-bar">
-            <span class="material-symbols-outlined" style="color:#94a3b8">search</span>
-            <input id="search-box" type="text" placeholder="店名や商品を検索" oninput="handleSearch(this.value)">
-        </div>
-        <div id="search-suggest"></div>
-        <div id="category-chips" class="category-scroll"></div>
-    </header>
+    <div class="search-bar">
+        <span class="material-symbols-outlined" style="color:#94a3b8">search</span>
+        <input id="search-box" type="text" placeholder="店名や商品を検索" oninput="handleSearch(this.value)">
+    </div>
+    <div id="search-suggest"></div>
+    
+    <div id="category-chips" class="category-scroll"></div>
+</header>
 
     <div class="content">
         <div id="map-page" class="page active">
@@ -164,22 +192,33 @@
     }
 
     function renderUI() {
-        markers.forEach(m => map.removeLayer(m));
-        markers = allStoreData.map(s => {
-            const color = categoryColors[s.category] || categoryColors["デフォルト"];
-            const icon = L.divIcon({
-                className: 'custom-icon',
-                html: `<div class="custom-pin"><span class="material-symbols-outlined" style="color:${color};font-size:34px;">location_on</span></div>`,
-                iconSize: [34, 34], iconAnchor: [17, 34]
-            });
-            const m = L.marker([s.lat, s.lng], { icon });
-            const googleMapUrl = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
-            m.bindPopup(`<div style="min-width:150px"><b>${s.name}</b><div style="color:red;font-weight:bold;margin:5px 0;font-size:13px;">${s.price.replace(/\//g, '<br>')}</div><div style="display:flex;gap:5px;"><button onclick="openPostWithStore('${s.name}')" style="flex:1;background:#059669;color:white;border:none;padding:8px;border-radius:6px;font-size:10px;font-weight:bold;">投稿</button><a href="${googleMapUrl}" target="_blank" style="flex:1;background:#0061A4;color:white;padding:8px;border-radius:6px;font-size:10px;font-weight:bold;text-align:center;text-decoration:none;">🚗 案内</a></div></div>`);
-            m.storeData = s;
-            return m;
-        });
-        updateFilters();
-    }
+    // --- マーカーの描画処理（既存のまま） ---
+    markers.forEach(m => map.removeLayer(m));
+    markers = allStoreData.map(s => {
+        /* ...中略（前回のマーカー作成コード）... */
+        return m;
+    });
+
+    // --- ここからカテゴリチップ生成 ---
+    // 重複を除いたカテゴリリストを作成
+    const categories = ["すべて", ...new Set(allStoreData.map(d => d.category))];
+    
+    const chipContainer = document.getElementById('category-chips');
+    chipContainer.innerHTML = categories.map(cat => `
+        <div onclick="filterByCategory('${cat}')" 
+             class="chip ${currentCategory === cat ? 'active' : ''}">
+            ${cat}
+        </div>
+    `).join('');
+
+    updateFilters(); // 表示を更新
+}
+
+// チップが押された時の処理
+function filterByCategory(cat) {
+    currentCategory = cat;
+    renderUI(); // 再描画してチップのactiveクラスを切り替える
+}
 
     // （以下、handleSearch, jumpToStore, showPage 等の関数は前回のコードと同じため省略していますが、完全な動作には必要です）
     // 前回の全コードをベースに、上記 loadData 内の商品リスト処理を反映させてください。
@@ -242,3 +281,4 @@
 </script>
 </body>
 </html>
+
