@@ -6,8 +6,7 @@
     <title>豊橋お買い物マップ - 最適化版</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-25..0" rel="stylesheet"/>
-    <style>
-        body { font-family: sans-serif; margin: 0; padding: 0; background: #f8fafc; display: flex; justify-content: center; height: 100dvh; overflow: hidden; }
+    body { font-family: sans-serif; margin: 0; padding: 0; background: #f8fafc; display: flex; justify-content: center; height: 100dvh; overflow: hidden; }
         .app-container { width: 100%; max-width: 430px; background: white; position: relative; display: flex; flex-direction: column; height: 100%; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
         
         /* ヘッダー周り */
@@ -41,62 +40,45 @@
         .card-price { padding: 10px; color: #dc2626; font-weight: bold; font-size: 13px; background: #fffbff; border-bottom: 1px solid #f1f5f9; }
         .card-btns { padding: 8px; display: flex; gap: 6px; background: #f8fafc; }
         .btn { flex: 1; padding: 8px; border-radius: 10px; border: none; font-weight: bold; font-size: 11px; cursor: pointer; text-align: center; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 4px; }
+        
         /* 投稿フォーム全体の余白を最適化 */
-.post-form { 
-    padding: 16px; 
-    display: flex; 
-    flex-direction: column; 
-    gap: 12px; /* 項目間のスキマを少し詰める */
-}
+        .post-form { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+        .input-group { display: flex; flex-direction: column; gap: 4px; }
+        .input-group label { font-size: 12px; font-weight: 800; color: #475569; margin-left: 2px; }
 
-/* 入力グループの微調整 */
-.input-group { 
-    display: flex; 
-    flex-direction: column; 
-    gap: 4px; 
-}
+        .post-form input { 
+            width: 100%; 
+            padding: 10px 14px; 
+            border-radius: 10px; 
+            border: 1px solid #cbd5e1; 
+            background: #f8fafc; 
+            box-sizing: border-box; 
+            font-size: 15px; 
+            transition: border-color 0.2s; 
+        }
 
-/* ラベルを少し小さく、太字に */
-.input-group label { 
-    font-size: 12px; 
-    font-weight: 800; 
-    color: #475569; 
-    margin-left: 2px;
-}
+        .post-form input:focus { border-color: #0061A4; outline: none; background: white; }
 
-/* 入力欄の高さと角の丸みを調整 */
-.post-form input { 
-    width: 100%; 
-    padding: 10px 14px; /* 上下を少しスリムに */
-    border-radius: 10px; 
-    border: 1px solid #cbd5e1; 
-    background: #f8fafc; 
-    box-sizing: border-box; 
-    font-size: 15px; /* 文字を少し大きくして読みやすく */
-    transition: border-color 0.2s;
-}
+        /* 送信ボタンの配置 */
+        #submit-btn { 
+            background: #0061A4; 
+            color: white; 
+            padding: 14px; 
+            border-radius: 999px; 
+            border: none; 
+            font-weight: bold; 
+            font-size: 16px; 
+            margin-top: 8px; 
+            box-shadow: 0 4px 12px rgba(0, 97, 164, 0.2); 
+            cursor: pointer;
+        }
 
-/* 入力中（フォーカス時）のスタイル */
-.post-form input:focus {
-    border-color: #0061A4;
-    outline: none;
-    background: white;
-}
-
-/* 送信ボタンの配置 */
-#submit-btn { 
-    background: #0061A4; 
-    color: white; 
-    padding: 14px; 
-    border-radius: 999px; 
-    border: none; 
-    font-weight: bold; 
-    font-size: 16px;
-    margin-top: 8px; /* ボタンの上に少し余裕を */
-    box-shadow: 0 4px 12px rgba(0, 97, 164, 0.2);
-}font-size: 14px; }
-        .custom-pin span { -webkit-text-stroke: 1px white; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3)); font-variation-settings: 'FILL' 1; }
-    </style>
+        /* 地図ピンのスタイル（ここが崩れていました） */
+        .custom-pin span { 
+            -webkit-text-stroke: 1.2px white; 
+            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3)); 
+            font-variation-settings: 'FILL' 1; 
+        }
 </head>
 <body>
 
@@ -315,6 +297,7 @@
 </script>
 </body>
 </html>
+
 
 
 
