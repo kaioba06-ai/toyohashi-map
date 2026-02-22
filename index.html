@@ -44,8 +44,21 @@
         
         /* 投稿フォーム全体の余白を最適化 */
         .post-form { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-        .input-group { display: flex; flex-direction: column; gap: 4px; }
-        .input-group label { font-size: 12px; font-weight: 800; color: #475569; margin-left: 2px; }
+        /* 入力グループの隙間をゼロにする */
+.input-group { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 0px; /* ここを0に */
+}
+
+/* ラベルの下の余白を消して、入力欄に近づける */
+.input-group label { 
+    font-size: 11px; 
+    font-weight: 800; 
+    color: #475569; 
+    margin-left: 4px;
+    margin-bottom: 2px; /* 入力欄との距離を最小限に */
+}
 
         .post-form input { 
             width: 100%; 
@@ -299,6 +312,7 @@
 </script>
 </body>
 </html>
+
 
 
 
