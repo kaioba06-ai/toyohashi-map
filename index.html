@@ -3,185 +3,178 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
-    <title>豊橋お買い物マップ - 決定版</title>
+    <title>豊橋お買い物マップ</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-25..0" rel="stylesheet"/>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <script id="tailwind-config">
         tailwind.config = {
-            darkMode: "class",
             theme: {
                 extend: {
                     colors: {
                         "primary": "#0061A4",
                         "on-primary": "#FFFFFF",
                         "primary-container": "#D1E4FF",
-                        "on-primary-container": "#001D36",
                         "secondary": "#535F70",
                         "success": "#34a853",
                         "price-red": "#d93025",
                         "background": "#FDFBFF",
-                    },
-                    fontFamily: { "display": ["'Noto Sans JP'", "sans-serif"] },
-                    borderRadius: { "DEFAULT": "1rem", "lg": "1.5rem", "xl": "1.75rem", "2xl": "2rem", "full": "9999px" },
-                },
-            },
+                    }
+                }
+            }
         }
     </script>
     <style type="text/tailwindcss">
         @layer base {
             body { @apply font-display bg-background text-slate-900 antialiased overflow-hidden h-screen flex justify-center; }
         }
-        #map { width: 100%; height: 100%; z-index: 1; }
+        /* 固定ヘッダー・フッターのための高さ設定 */
         .page { 
-  　　　　　　  @apply absolute inset-0 flex flex-col bg-white hidden; 
-                z-index: 10; 
-                padding-top: 80px;    /* ヘッダーの高さ分空ける */
-                padding-bottom: 90px; /* フッターの高さ分空ける */
-            　}
+            @apply absolute inset-0 flex flex-col bg-white hidden; 
+            padding-top: 130px;    /* ヘッダー+チップの高さ */
+            padding-bottom: 90px;  /* フッターの高さ */
+            z-index: 10;
+        }
         .page.active { @apply flex; }
+        #map { width: 100%; height: 100%; z-index: 1; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        /* マップ上のカスタムピン */
-        .custom-pin { display: flex; flex-direction: column; align-items: center; }
-        .pin-label { @apply px-2 py-0.5 rounded-md text-[11px] font-bold shadow-md text-white mb-0.5; }
     </style>
 </head>
 <body>
 
-<div class="relative flex h-full w-full flex-col overflow-hidden max-w-[430px] bg-white shadow-2xl border-x border-slate-100">
+<div class="relative flex h-full w-full flex-col overflow-hidden max-w-[430px] bg-white shadow-2xl">
     
-<header class="fixed top-0 left-0 right-0 z-[5000] px-4 pt-4 pb-2 bg-white/80 backdrop-blur-md border-b border-slate-100 max-w-[430px] mx-auto">
-    <div class="flex items-center bg-white shadow-sm rounded-full px-2 py-1.5 border border-slate-200">
-        <div class="flex items-center justify-center w-10 h-10 text-slate-500">
-            <span class="material-symbols-outlined">search</span>
+    <header class="fixed top-0 left-0 right-0 z-[5000] px-4 pt-4 pb-2 bg-white/80 backdrop-blur-md border-b border-slate-100 max-w-[430px] mx-auto">
+        <div class="flex items-center bg-white shadow-lg rounded-full px-2 py-1.5 border border-slate-200">
+            <div class="flex items-center justify-center w-10 h-10 text-slate-500">
+                <span class="material-symbols-outlined">search</span>
+            </div>
+            <input id="search-box" oninput="updateFilters()" class="flex-1 bg-transparent border-none focus:ring-0 text-[16px]" placeholder="お店や商品を検索" type="text"/>
+            <button onclick="toggleFilterMenu()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100">
+                <span class="material-symbols-outlined text-slate-600">tune</span>
+            </button>
         </div>
-        <input id="search-box" oninput="updateFilters()" class="flex-1 bg-transparent border-none focus:ring-0 text-[16px]" placeholder="お店や商品を検索" type="text"/>
-        <button onclick="toggleFilterMenu()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100">
-            <span class="material-symbols-outlined text-slate-600">tune</span>
-        </button>
-    </div>
-</header>
+        <div id="category-chips" class="flex gap-2 mt-3 overflow-x-auto no-scrollbar pb-1">
+            </div>
+    </header>
 
-    <div id="map-page" class="page active">
+    <div id="map-page" class="page active" style="padding-top:0; padding-bottom:0;">
         <div id="map"></div>
-        <button onclick="goToMyLocation()" class="absolute bottom-24 right-4 z-[500] w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-lg active:scale-95 border border-slate-100">
+        <button onclick="goToMyLocation()" class="absolute bottom-28 right-4 z-[1000] w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-2xl border border-slate-100 active:scale-95 transition-transform">
             <span class="material-symbols-outlined text-primary text-[28px]">my_location</span>
         </button>
     </div>
 
-    <div id="list-page" class="page pt-20">
-        <div class="px-6 py-4 border-b border-slate-100">
-            <h2 class="text-xl font-bold">📋 店舗・底値一覧</h2>
+    <div id="list-page" class="page">
+        <div class="px-6 py-2">
+            <h2 class="text-xl font-black italic flex items-center gap-2">
+                <span class="material-symbols-outlined">list_alt</span> 店舗・底値一覧
+            </h2>
         </div>
-        <div id="store-list-content" class="flex-1 overflow-y-auto px-4 py-4 space-y-4 no-scrollbar pb-32">
+        <div id="store-list-content" class="flex-1 overflow-y-auto px-4 py-2 space-y-4 no-scrollbar">
             </div>
     </div>
 
-    <div id="post-page" class="page pt-4">
-        <div class="flex-1 overflow-y-auto px-6 no-scrollbar pb-32">
+    <div id="post-page" class="page">
+        <div class="flex-1 overflow-y-auto px-6 no-scrollbar pb-10">
              <div class="flex items-center justify-between py-4">
-                <h1 class="text-xl font-bold">新価格を報告</h1>
-                <button onclick="showPage('map-page')" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500">
-                    <span class="material-symbols-outlined text-[20px]">close</span>
+                <h1 class="text-2xl font-bold">新価格を報告</h1>
+                <button onclick="showPage('map-page', document.querySelector('.nav-map'))" class="w-10 h-10 flex items-center justify-center rounded-full bg-slate-100">
+                    <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
             <div class="space-y-6">
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-2">店舗名</label>
-                    <input id="post-store-name" list="store-list-candidates" class="w-full px-4 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-primary" placeholder="例: ヤマナカ 豊橋店">
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-slate-700 ml-1">店舗名</label>
+                    <input id="post-store-name" list="store-list-candidates" class="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-primary" placeholder="例: ヤマナカ 豊橋店">
                     <datalist id="store-list-candidates"></datalist>
                 </div>
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-2">商品名</label>
-                    <input id="post-item-name" class="w-full px-4 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-primary" placeholder="例: 卵 (10個入)">
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-slate-700 ml-1">商品名</label>
+                    <input id="post-item-name" class="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-primary" placeholder="例: 卵 (10個入)">
                 </div>
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-2">価格 (税抜)</label>
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-slate-700 ml-1">価格 (税抜)</label>
                     <div class="relative">
-                        <span class="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">¥</span>
-                        <input id="post-price" type="number" class="w-full pl-10 pr-4 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-primary font-bold text-xl" placeholder="158">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-xl">¥</span>
+                        <input id="post-price" type="number" class="w-full pl-10 p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-primary font-bold text-2xl" placeholder="158">
                     </div>
                 </div>
-                <button id="submit-btn" onclick="submitData()" class="w-full py-5 bg-primary text-white font-bold text-lg rounded-full shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                <button id="submit-btn" onclick="submitData()" class="w-full py-5 bg-primary text-white font-bold text-lg rounded-full shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2">
                     投稿する <span class="material-symbols-outlined">send</span>
                 </button>
             </div>
         </div>
     </div>
 
-<nav class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-slate-200 pb-safe-area-bottom pt-3 z-[5000] max-w-[430px] mx-auto">
-    <div class="flex items-center justify-around">
-        <button onclick="showPage('map-page', this)" class="nav-item flex flex-col items-center gap-1 text-primary">
-            <div class="flex items-center justify-center w-[64px] h-[32px] bg-primary-container rounded-full"><span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">map</span></div>
-            <span class="text-[12px] font-bold">マップ</span>
-        </button>
-        <button onclick="showPage('list-page', this)" class="nav-item flex flex-col items-center gap-1 text-secondary">
-            <div class="flex items-center justify-center w-[64px] h-[32px] rounded-full"><span class="material-symbols-outlined">format_list_bulleted</span></div>
-            <span class="text-[12px] font-medium">リスト</span>
-        </button>
-        <button onclick="showPage('post-page', this)" class="nav-item flex flex-col items-center gap-1 text-secondary">
-            <div class="flex items-center justify-center w-[64px] h-[32px] rounded-full"><span class="material-symbols-outlined">add_circle</span></div>
-            <span class="text-[12px] font-medium">投稿</span>
-        </button>
-    </div>
-</nav>
+    <nav class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-slate-200 pb-8 pt-3 z-[5000] max-w-[430px] mx-auto">
+        <div class="flex items-center justify-around">
+            <button onclick="showPage('map-page', this)" class="nav-map flex flex-col items-center gap-1 text-primary">
+                <div class="flex items-center justify-center w-[64px] h-[32px] bg-primary-container rounded-full"><span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">map</span></div>
+                <span class="text-[12px] font-bold">マップ</span>
+            </button>
+            <button onclick="showPage('list-page', this)" class="nav-list flex flex-col items-center gap-1 text-secondary">
+                <div class="flex items-center justify-center w-[64px] h-[32px] rounded-full"><span class="material-symbols-outlined">format_list_bulleted</span></div>
+                <span class="text-[12px] font-medium">リスト</span>
+            </button>
+            <button onclick="showPage('post-page', this)" class="nav-post flex flex-col items-center gap-1 text-secondary">
+                <div class="flex items-center justify-center w-[64px] h-[32px] rounded-full"><span class="material-symbols-outlined">add_circle</span></div>
+                <span class="text-[12px] font-medium">投稿</span>
+            </button>
+        </div>
+    </nav>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+    // ※ここに以前のJavaScriptをそのまま貼り付けます
     const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTsb43W7oGI-uAyoWp19J1Z3WT3L48QW3TdJDIjseaTvLVtAMAfYX-sZNuLK6kuc2j2pbkLZ0I0p6Pp/pub?gid=0&single=true&output=csv';
     const gasUrl = 'https://script.google.com/macros/s/AKfycbz4OHWsfJStoowmEINpTMAXYEWu71AW5e5VDDyBCWTpAg5jznhgyouLjM5C3YEvUDo/exec';
 
     const categoryColors = { "スーパー": "#34a853", "ドラッグストア": "#d93025", "JA": "#ffa502", "デフォルト": "#0061A4" };
-    
-    let map, markers = [], allStoreData = [], watchId = null;
+    let map, markers = [], allStoreData = [];
 
     function initMap() {
         map = L.map('map', { zoomControl: false }).setView([34.7628, 137.3817], 14);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-        startTracking();
         loadData();
+        startTracking();
     }
 
     async function loadData() {
         try {
             const res = await fetch(csvUrl + '&t=' + Date.now());
             const text = await res.text();
-            const data = text.split('\n').slice(1).map(row => row.split(','));
-            allStoreData = data.map(cols => ({
-                name: cols[0]?.trim(), lat: parseFloat(cols[1]), lng: parseFloat(cols[2]),
-                category: cols[5]?.trim() || "未分類", price: cols[6] || ""
-            })).filter(d => !isNaN(d.lat));
-            
+            const rows = text.split('\n').slice(1);
+            allStoreData = rows.map(row => {
+                const cols = row.split(',');
+                return { name: cols[0]?.trim(), lat: parseFloat(cols[1]), lng: parseFloat(cols[2]), category: cols[5]?.trim() || "未分類", price: cols[6] || "" };
+            }).filter(d => !isNaN(d.lat));
             renderUI();
         } catch (e) { console.error(e); }
     }
 
     function renderUI() {
-        // ピンの作成
         markers.forEach(m => map.removeLayer(m));
         markers = allStoreData.map(s => {
             const color = categoryColors[s.category] || categoryColors["デフォルト"];
             const icon = L.divIcon({
-                className: 'custom-div-icon',
-                html: `<div class="custom-pin"><div class="pin-label" style="background:${color}">${s.price.split('/')[0] || '詳細'}</div><span class="material-symbols-outlined" style="color:${color}; font-size:40px; font-variation-settings:'FILL' 1">location_on</span></div>`,
-                iconSize: [50, 50], iconAnchor: [25, 45]
+                className: 'custom-icon',
+                html: `<div style="display:flex;flex-direction:column;align-items:center;"><div style="background:${color};color:white;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:bold;box-shadow:0 2px 4px rgba(0,0,0,0.2)">${s.price.split('/')[0] || '詳細'}</div><span class="material-symbols-outlined" style="color:${color};font-size:32px;font-variation-settings:'FILL' 1">location_on</span></div>`,
+                iconSize: [40, 40], iconAnchor: [20, 40]
             });
             const m = L.marker([s.lat, s.lng], { icon }).addTo(map);
-            m.bindPopup(`<b>${s.name}</b><br>${s.price}<br><button onclick="openPostWithStore('${s.name}')" class="text-primary font-bold">💰 報告する</button>`);
+            m.bindPopup(`<b>${s.name}</b><br>${s.price}<br><button onclick="openPostWithStore('${s.name}')" style="color:#0061A4;font-weight:bold;margin-top:5px;">💰 報告する</button>`);
             m.storeData = s;
             return m;
         });
 
-        // カテゴリチップの作成
         const cats = ["すべて", ...new Set(allStoreData.map(d => d.category))];
         document.getElementById('category-chips').innerHTML = cats.map(c => `
-            <button onclick="filterByCategory('${c}')" class="flex items-center gap-1.5 px-4 py-2 bg-white shadow-sm rounded-full whitespace-nowrap text-[13px] font-medium border border-slate-100">${c}</button>
+            <button onclick="filterByCategory('${c}')" class="px-4 py-2 bg-white shadow-sm rounded-full whitespace-nowrap text-[13px] font-bold border border-slate-200">${c}</button>
         `).join('');
-
         updateFilters();
     }
 
@@ -189,24 +182,19 @@
         const query = document.getElementById('search-box').value.toLowerCase();
         const list = document.getElementById('store-list-content');
         list.innerHTML = "";
-
         markers.forEach(m => {
             const s = m.storeData;
-            const match = s.name.toLowerCase().includes(query) || s.price.toLowerCase().includes(query);
-            if (match) {
+            if (s.name.toLowerCase().includes(query) || s.price.toLowerCase().includes(query)) {
                 map.addLayer(m);
-                const gMapUrl = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
+                const gUrl = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
                 list.innerHTML += `
-                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 transition-all active:scale-[0.98]">
                         <div class="flex justify-between items-start mb-3">
-                            <div>
-                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">${s.category}</span>
-                                <h3 class="text-lg font-bold mt-1">${s.name}</h3>
-                            </div>
+                            <div><span class="text-[10px] font-bold px-2 py-0.5 bg-slate-100 rounded-full text-slate-500">${s.category}</span><h3 class="text-lg font-bold mt-1">${s.name}</h3></div>
                             <div class="text-right"><p class="text-2xl font-black text-price-red">${s.price || '---'}</p></div>
                         </div>
                         <div class="flex gap-3">
-                            <a href="${gMapUrl}" target="_blank" class="flex-1 flex items-center justify-center gap-2 bg-primary text-white font-bold py-3 rounded-full text-sm">🗺️ ナビ</a>
+                            <a href="${gUrl}" target="_blank" class="flex-1 flex items-center justify-center gap-2 bg-primary text-white font-bold py-3 rounded-full text-sm">🗺️ 案内</a>
                             <button onclick="openPostWithStore('${s.name}')" class="flex-1 flex items-center justify-center gap-2 bg-success text-white font-bold py-3 rounded-full text-sm">💰 投稿</button>
                         </div>
                     </div>`;
@@ -217,11 +205,9 @@
     function showPage(pageId, btn) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.getElementById(pageId).classList.add('active');
-        
-        // ナビボタンのスタイル更新
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.classList.replace('text-primary', 'text-secondary');
-            item.querySelector('div').classList.remove('bg-primary-container');
+        document.querySelectorAll('nav button').forEach(b => {
+            b.classList.replace('text-primary', 'text-secondary');
+            b.querySelector('div').classList.remove('bg-primary-container');
         });
         if(btn) {
             btn.classList.replace('text-secondary', 'text-primary');
@@ -232,7 +218,7 @@
 
     function startTracking() {
         if (navigator.geolocation) {
-            watchId = navigator.geolocation.watchPosition(p => {
+            navigator.geolocation.watchPosition(p => {
                 const ll = [p.coords.latitude, p.coords.longitude];
                 if (window.myLocMarker) window.myLocMarker.setLatLng(ll);
                 else window.myLocMarker = L.circleMarker(ll, { radius: 8, color: '#fff', fillColor: '#0061A4', fillOpacity: 1, weight: 2 }).addTo(map);
@@ -241,14 +227,12 @@
     }
 
     function goToMyLocation() {
-        navigator.geolocation.getCurrentPosition(p => {
-            map.flyTo([p.coords.latitude, p.coords.longitude], 16);
-        });
+        navigator.geolocation.getCurrentPosition(p => map.flyTo([p.coords.latitude, p.coords.longitude], 16));
     }
 
     function openPostWithStore(name) {
         document.getElementById('post-store-name').value = name;
-        showPage('post-page');
+        showPage('post-page', document.querySelector('.nav-post'));
     }
 
     async function submitData() {
@@ -256,13 +240,12 @@
         const itemName = document.getElementById('post-item-name').value;
         const price = document.getElementById('post-price').value;
         if (!storeName || !itemName || !price) return alert("入力してください");
-
         const btn = document.getElementById('submit-btn');
         btn.innerText = "送信中..."; btn.disabled = true;
         try {
             await fetch(gasUrl, { method: "POST", mode: "no-cors", body: JSON.stringify({ storeName, itemName, price }) });
             alert("投稿完了！");
-            showPage('map-page');
+            showPage('map-page', document.querySelector('.nav-map'));
         } catch (e) { alert("エラー"); }
         btn.innerText = "投稿する"; btn.disabled = false;
     }
@@ -271,4 +254,3 @@
 </script>
 </body>
 </html>
-
