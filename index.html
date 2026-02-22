@@ -34,11 +34,14 @@
         .page { @apply absolute inset-0 flex flex-col bg-white hidden; z-index: 10; }
         .page.active { @apply flex; }
         
-        /* ヘッダー・フッター縮小に伴う余白調整 */
-        #list-page, #post-page { padding-top: 110px; padding-bottom: 75px; }
+        /* 余白の最適化 */
+        #list-page, #post-page { padding-top: 115px; padding-bottom: 85px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
         .custom-pin { display: flex; flex-direction: column; align-items: center; }
+        
+        /* リストカードの調整 */
+        .store-card { @apply bg-white rounded-xl p-3 shadow-sm border border-slate-100 flex flex-col gap-2; }
     </style>
 </head>
 <body>
@@ -50,8 +53,8 @@
             <div class="flex items-center justify-center w-8 h-8 text-slate-500">
                 <span class="material-symbols-outlined text-[20px]">search</span>
             </div>
-            <input id="search-box" list="search-candidates" oninput="updateFilters()" class="flex-1 bg-transparent border-none focus:ring-0 text-[14px]" placeholder="店名や商品を検索" type="text"/>
-            <datalist id="search-candidates"></datalist>
+            <input id="search-box" list="combined-candidates" oninput="updateFilters()" class="flex-1 bg-transparent border-none focus:ring-0 text-[14px]" placeholder="店名や商品を検索" type="text"/>
+            <datalist id="combined-candidates"></datalist>
         </div>
         <div id="category-chips" class="flex gap-2 mt-2 overflow-x-auto no-scrollbar pb-1"></div>
     </header>
@@ -65,22 +68,25 @@
 
     <div id="list-page" class="page">
         <div class="px-5 py-2 border-b border-slate-50">
-            <h2 class="text-lg font-bold flex items-center gap-2 text-slate-700">📋 店舗・底値一覧</h2>
+            <h2 class="text-base font-bold flex items-center gap-2 text-slate-700">📋 店舗・底値一覧</h2>
         </div>
-        <div id="store-list-content" class="flex-1 overflow-y-auto px-4 py-3 space-y-3 no-scrollbar"></div>
+        <div id="store-list-content" class="flex-1 overflow-y-auto px-4 py-3 space-y-3 no-scrollbar">
+            </div>
     </div>
 
-   <div id="post-page" class="page">
+    <div id="post-page" class="page">
         <div class="flex-1 overflow-y-auto px-6 no-scrollbar pb-10">
             <h2 class="text-xl font-bold py-4">価格を報告</h2>
             <div class="space-y-4">
                 <div class="space-y-1">
                     <label class="text-xs font-bold text-slate-500 ml-1">店舗名</label>
                     <input id="post-store-name" list="store-list-candidates" class="w-full p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary text-sm" placeholder="店名を選択または入力">
+                    <datalist id="store-list-candidates"></datalist>
                 </div>
                 <div class="space-y-1">
                     <label class="text-xs font-bold text-slate-500 ml-1">商品名</label>
-                    <input id="post-item-name" class="w-full p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary text-sm" placeholder="例：たまご">
+                    <input id="post-item-name" list="item-list-candidates" class="w-full p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary text-sm" placeholder="例：たまご">
+                    <datalist id="item-list-candidates"></datalist>
                 </div>
                 <div class="space-y-1">
                     <label class="text-xs font-bold text-slate-500 ml-1">価格 (税抜)</label>
@@ -93,24 +99,23 @@
                     <label class="text-xs font-bold text-slate-500 ml-1">備考（量・サイズ）</label>
                     <input id="post-note" class="w-full p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary text-sm" placeholder="例：10個入、特売品など">
                 </div>
-
                 <button id="submit-btn" onclick="submitData()" class="w-full py-4 bg-primary text-white font-bold rounded-full shadow-lg active:scale-95 transition-all mt-2">投稿する</button>
             </div>
         </div>
     </div>
-    
+
     <nav class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-slate-200 pb-5 pt-2 z-[5000] max-w-[430px] mx-auto">
         <div class="flex items-center justify-around">
-            <button onclick="showPage('map-page', this)" class="nav-map flex flex-col items-center gap-1 text-primary">
-                <div class="flex items-center justify-center w-[56px] h-[28px] bg-primary-container rounded-full transition-all text-primary"><span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1">map</span></div>
+            <button onclick="showPage('map-page', this)" class="nav-map flex flex-col items-center gap-0.5 text-primary">
+                <div class="flex items-center justify-center w-[56px] h-[28px] bg-primary-container rounded-full text-primary"><span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1">map</span></div>
                 <span class="text-[10px] font-bold">マップ</span>
             </button>
-            <button onclick="showPage('list-page', this)" class="nav-list flex flex-col items-center gap-1 text-secondary">
-                <div class="flex items-center justify-center w-[56px] h-[28px] rounded-full transition-all text-secondary"><span class="material-symbols-outlined text-[20px]">format_list_bulleted</span></div>
+            <button onclick="showPage('list-page', this)" class="nav-list flex flex-col items-center gap-0.5 text-secondary">
+                <div class="flex items-center justify-center w-[56px] h-[28px] rounded-full text-secondary"><span class="material-symbols-outlined text-[20px]">format_list_bulleted</span></div>
                 <span class="text-[10px] font-medium">リスト</span>
             </button>
-            <button onclick="showPage('post-page', this)" class="nav-post flex flex-col items-center gap-1 text-secondary">
-                <div class="flex items-center justify-center w-[56px] h-[28px] rounded-full transition-all text-secondary"><span class="material-symbols-outlined text-[20px]">add_circle</span></div>
+            <button onclick="showPage('post-page', this)" class="nav-post flex flex-col items-center gap-0.5 text-secondary">
+                <div class="flex items-center justify-center w-[56px] h-[28px] rounded-full text-secondary"><span class="material-symbols-outlined text-[20px]">add_circle</span></div>
                 <span class="text-[10px] font-medium">投稿</span>
             </button>
         </div>
@@ -156,8 +161,19 @@
                 iconSize: [32, 32], iconAnchor: [16, 32]
             });
             const m = L.marker([s.lat, s.lng], { icon }).addTo(map);
-            // 修正：選択（クリック）したときだけ詳細を表示
-            m.bindPopup(`<div class="text-sm"><b>${s.name}</b><br><span class="text-price-red font-bold">${s.price}</span><br><button onclick="openPostWithStore('${s.name}')" class="text-primary font-bold mt-1 inline-block">💰 報告</button></div>`);
+            
+            // 地図上のポップアップに案内ボタンを復活
+            const gUrl = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
+            m.bindPopup(`
+                <div class="text-[13px] p-1">
+                    <b class="text-slate-800">${s.name}</b><br>
+                    <span class="text-price-red font-bold text-base">${s.price}</span><br>
+                    <div class="flex gap-3 mt-2">
+                        <a href="${gUrl}" target="_blank" class="text-primary font-bold">🗺️ 案内</a>
+                        <button onclick="openPostWithStore('${s.name}')" class="text-success font-bold">💰 報告</button>
+                    </div>
+                </div>
+            `);
             m.storeData = s;
             return m;
         });
@@ -186,14 +202,19 @@
                 map.addLayer(m);
                 const gUrl = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
                 listContent.innerHTML += `
-                    <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+                    <div class="store-card">
                         <div class="flex justify-between items-start">
-                            <div><span class="text-[9px] font-bold px-1.5 py-0.5 bg-slate-100 rounded text-slate-500 uppercase">${s.category}</span><h3 class="text-sm font-bold mt-1 text-slate-800">${s.name}</h3></div>
-                            <div class="text-right"><p class="text-lg font-black text-price-red">${s.price || '---'}</p></div>
+                            <div class="flex-1">
+                                <span class="text-[9px] font-bold px-1.5 py-0.5 bg-slate-100 rounded text-slate-500 uppercase">${s.category}</span>
+                                <h3 class="text-[14px] font-bold mt-0.5 text-slate-800 leading-tight">${s.name}</h3>
+                            </div>
+                            <div class="text-right ml-2">
+                                <p class="text-[16px] font-black text-price-red">${s.price || '---'}</p>
+                            </div>
                         </div>
-                        <div class="flex gap-2 mt-3">
-                            <a href="${gUrl}" target="_blank" class="flex-1 flex items-center justify-center gap-1 bg-primary text-white font-bold py-2 rounded-lg text-xs">🗺️ 案内</a>
-                            <button onclick="openPostWithStore('${s.name}')" class="flex-1 flex items-center justify-center gap-1 bg-success text-white font-bold py-2 rounded-lg text-xs">💰 報告</button>
+                        <div class="flex gap-2 mt-1">
+                            <a href="${gUrl}" target="_blank" class="flex-1 flex items-center justify-center gap-1 bg-primary/10 text-primary font-bold py-2 rounded-lg text-[11px]">🗺️ 案内を見る</a>
+                            <button onclick="openPostWithStore('${s.name}')" class="flex-1 flex items-center justify-center gap-1 bg-success/10 text-success font-bold py-2 rounded-lg text-[11px]">💰 価格を報告</button>
                         </div>
                     </div>`;
             } else { map.removeLayer(m); }
@@ -235,9 +256,14 @@
 
     function updateDatalists() {
         const names = [...new Set(allStoreData.map(s => s.name))].sort();
-        const options = names.map(n => `<option value="${n}">`).join('');
-        document.getElementById('store-list-candidates').innerHTML = options;
-        document.getElementById('search-candidates').innerHTML = options; // 検索候補
+        const prices = [...new Set(allStoreData.map(s => s.price.split(' ')[0]))].filter(p => p && p.length > 1); // 商品名の抽出（簡易的）
+        
+        // 1. 検索用（店舗名＋商品名）
+        document.getElementById('combined-candidates').innerHTML = names.map(n => `<option value="${n}">`).join('') + prices.map(p => `<option value="${p}">`).join('');
+        // 2. 投稿用 店舗名
+        document.getElementById('store-list-candidates').innerHTML = names.map(n => `<option value="${n}">`).join('');
+        // 3. 投稿用 商品名
+        document.getElementById('item-list-candidates').innerHTML = prices.map(p => `<option value="${p}">`).join('');
     }
 
     async function submitData() {
