@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
-    <title>豊橋お買い物マップ - 透過ピン版</title>
+    <title>豊橋お買い物マップ - 最終調整版</title>
     
     <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet"/>
@@ -45,19 +45,9 @@
         .map-btn-white { color: white !important; }
         .no-wrap-bracket { display: inline-block; white-space: nowrap; }
 
-        /* ピンの透過設定 */
-        .custom-pin { 
-            opacity: 0.85; /* 85%の不透明度（15%透ける） */
-            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));
-            transition: opacity 0.2s;
-        }
-        .custom-pin:hover {
-            opacity: 1.0; /* タップ/ホバー時はくっきり表示 */
-        }
-        /* ピンのアイコンに白い縁取りをつけて視認性アップ */
-        .pin-icon-style {
-            -webkit-text-stroke: 1px white;
-        }
+        .custom-pin { opacity: 0.85; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2)); transition: opacity 0.2s; }
+        .custom-pin:hover { opacity: 1.0; }
+        .pin-icon-style { -webkit-text-stroke: 1px white; }
     </style>
 </head>
 <body>
@@ -108,7 +98,7 @@
                     <label class="text-[11px] font-bold text-slate-500 ml-1">価格 (税抜)</label>
                     <div class="relative">
                         <span class="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-lg">¥</span>
-                        <input id="post-price" type="number" class="w-full pl-9 p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary font-bold text-xl" placeholder="例：198">
+                        <input id="post-price" type="number" class="w-full pl-9 p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary font-bold text-xl" placeholder="198">
                     </div>
                 </div>
                 <div class="space-y-1">
@@ -146,6 +136,17 @@
     let map, markers = [], allStoreData = [], currentCategory = "すべて";
     const defaultItems = ["たまご", "牛乳", "牛こま肉（100g単価）", "豚こま肉（100g単価）", "鶏もも肉（100g単価）", "鶏むね肉（100g単価）", "ささみ（100g単価）", "鶏皮（100g単価）", "砂肝（100g単価）", "豚あいびきミンチ（100g単価）", "鶏ももミンチ（100g単価）", "鶏むねミンチ（100g単価）", "豆腐", "あぶらあげ", "うどん", "長ネギ", "キャベツ", "にんじん", "じゃがいも", "玉ねぎ"];
 
+    // 共通のテキストフォーマッタ（改行・カッコ内改行禁止）
+    function formatProductText(text) {
+        if (!text) return "";
+        return text.replace(/[\/／]/g, '<br>')
+                   .replace(/ /g, '<br>')
+                   .split('<br>')
+                   .filter(l => l.trim() !== "")
+                   .map(l => `<div class="leading-none">${l.replace(/([\(（].*?[\)）])/g, '<span class="no-wrap-bracket">$1</span>')}</div>`)
+                   .join('');
+    }
+
     function initMap() {
         map = L.map('map', { zoomControl: false }).setView([34.7628, 137.3817], 14);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
@@ -160,7 +161,15 @@
             const rows = text.split(/\r?\n/).slice(1);
             allStoreData = rows.map(row => {
                 const cols = row.split(',');
-                return { name: cols[0]?.trim(), lat: parseFloat(cols[1]), lng: parseFloat(cols[2]), category: cols[5]?.trim() || "未分類", price: cols[6] || "", note: cols[7] || "" };
+                // CSVの列：0:店名, 1:lat, 2:lng, 5:カテゴリ, 6:価格情報, 7:備考
+                return { 
+                    name: cols[0]?.trim(), 
+                    lat: parseFloat(cols[1]), 
+                    lng: parseFloat(cols[2]), 
+                    category: cols[5]?.trim() || "未分類", 
+                    price: cols[6] || "", 
+                    note: cols[7] || "" 
+                };
             }).filter(d => !isNaN(d.lat));
             renderUI();
             updateDatalists();
@@ -178,7 +187,24 @@
             });
             const m = L.marker([s.lat, s.lng], { icon }).addTo(map);
             const gUrl = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
-            m.bindPopup(`<div class="text-[13px] min-w-[140px] p-1"><b class="text-slate-800">${s.name}</b><br><span class="text-price-red font-bold text-base">${s.price}</span><br><div class="flex gap-2 mt-3"><a href="${gUrl}" target="_blank" class="flex-1 bg-primary text-white text-center py-2 rounded-lg text-[11px] font-bold map-btn-white">🗺️ 案内</a><button onclick="openPostWithStore('${s.name}')" class="flex-1 bg-success text-white py-2 rounded-lg text-[11px] font-bold">💰 投稿</button></div></div>`);
+            
+            // マップ側のポップアップも改行を適用
+            const mapPriceHtml = formatProductText(s.price);
+            const mapNoteHtml = s.note.replace(/([\(（].*?[\)）])/g, '<span class="no-wrap-bracket">$1</span>');
+
+            m.bindPopup(`
+                <div class="text-[13px] min-w-[160px] p-1">
+                    <b class="text-slate-800 text-[14px]">${s.name}</b>
+                    <div class="text-price-red font-bold mt-1 mb-2 leading-none">
+                        ${mapPriceHtml}
+                    </div>
+                    ${s.note ? `<div class="text-[10px] text-slate-500 italic border-l-2 border-slate-200 pl-1 mb-2">${mapNoteHtml}</div>` : ''}
+                    <div class="flex gap-2 pt-1 border-t border-slate-100">
+                        <a href="${gUrl}" target="_blank" class="flex-1 bg-primary text-white text-center py-2 rounded-lg text-[11px] font-bold map-btn-white">🗺️ 案内</a>
+                        <button onclick="openPostWithStore('${s.name}')" class="flex-1 bg-success text-white py-2 rounded-lg text-[11px] font-bold">💰 投稿</button>
+                    </div>
+                </div>
+            `);
             m.storeData = s;
             return m;
         });
@@ -203,16 +229,7 @@
                 count++;
                 const gUrl = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
                 
-                const formatText = (text) => {
-                    return text.replace(/[\/／]/g, '<br>')
-                               .replace(/ /g, '<br>')
-                               .split('<br>')
-                               .filter(l => l.trim() !== "")
-                               .map(l => `<div class="leading-none">${l.replace(/([\(（].*?[\)）])/g, '<span class="no-wrap-bracket">$1</span>')}</div>`)
-                               .join('');
-                };
-
-                const formattedPrice = formatText(s.price);
+                const formattedPrice = formatProductText(s.price);
                 const formattedNote = s.note.replace(/([\(（].*?[\)）])/g, '<span class="no-wrap-bracket">$1</span>');
 
                 listContent.innerHTML += `
@@ -282,16 +299,28 @@
     async function submitData() {
         const storeName = document.getElementById('post-store-name').value;
         const itemName = document.getElementById('post-item-name').value;
-        const note = document.getElementById('post-note').value;
+        const note = document.getElementById('post-note').value; // 備考を取得
         const price = document.getElementById('post-price').value;
+        
         if (!storeName || !itemName || !price) return alert("必須項目を入力してください");
         const btn = document.getElementById('submit-btn');
         btn.innerText = "送信中..."; btn.disabled = true;
+        
         try {
-            await fetch(gasUrl, { method: "POST", mode: "no-cors", body: JSON.stringify({ storeName, itemName, note, price }) });
+            // noteも含めて送信
+            await fetch(gasUrl, { 
+                method: "POST", 
+                mode: "no-cors", 
+                body: JSON.stringify({ storeName, itemName, note, price }) 
+            });
             alert("投稿完了！");
+            // 入力フォームをクリア
+            document.getElementById('post-item-name').value = "";
+            document.getElementById('post-price').value = "";
+            document.getElementById('post-note').value = "";
             showPage('map-page', document.querySelector('.nav-map'));
-        } catch (e) { alert("エラー"); }
+            loadData(); // データを再読み込み
+        } catch (e) { alert("エラーが発生しました"); }
         btn.innerText = "投稿する"; btn.disabled = false;
     }
     window.onload = initMap;
