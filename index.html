@@ -37,13 +37,12 @@
         #list-page, #post-page { padding-top: 105px; padding-bottom: 80px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
-        /* リストカード：3段構造（上部固定・中央可変・下部固定） */
-        .store-card { @apply bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden; max-height: 300px; }
+        /* リストカード：3段構造 */
+        .store-card { @apply bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden; max-height: 350px; }
         .card-header { @apply p-3 bg-white border-b border-slate-50 shrink-0; }
         .card-body { @apply p-3 overflow-y-auto bg-white grow; }
         .card-footer { @apply p-3 bg-slate-50 border-t border-slate-100 shrink-0 flex gap-2; }
         
-        /* マップポップアップ内のボタン文字色を白に固定 */
         .map-btn-white { color: white !important; }
     </style>
 </head>
@@ -74,8 +73,7 @@
             <h2 class="text-sm font-bold text-slate-700">📋 店舗・底値一覧</h2>
             <span id="list-count" class="text-[10px] text-slate-400"></span>
         </div>
-        <div id="store-list-content" class="flex-1 overflow-y-auto px-4 py-4 space-y-4 no-scrollbar bg-slate-50/50">
-            </div>
+        <div id="store-list-content" class="flex-1 overflow-y-auto px-4 py-4 space-y-4 no-scrollbar bg-slate-50/50"></div>
     </div>
 
     <div id="post-page" class="page">
@@ -166,16 +164,7 @@
             });
             const m = L.marker([s.lat, s.lng], { icon }).addTo(map);
             const gUrl = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
-            m.bindPopup(`
-                <div class="text-[13px] min-w-[140px] p-1">
-                    <b class="text-slate-800">${s.name}</b><br>
-                    <span class="text-price-red font-bold text-base">${s.price}</span><br>
-                    <div class="flex gap-2 mt-3">
-                        <a href="${gUrl}" target="_blank" class="flex-1 bg-primary text-white text-center py-2 rounded-lg text-[11px] font-bold map-btn-white">🗺️ 案内</a>
-                        <button onclick="openPostWithStore('${s.name}')" class="flex-1 bg-success text-white py-2 rounded-lg text-[11px] font-bold">💰 投稿</button>
-                    </div>
-                </div>
-            `);
+            m.bindPopup(`<div class="text-[13px] min-w-[140px] p-1"><b class="text-slate-800">${s.name}</b><br><span class="text-price-red font-bold text-base">${s.price}</span><br><div class="flex gap-2 mt-3"><a href="${gUrl}" target="_blank" class="flex-1 bg-primary text-white text-center py-2 rounded-lg text-[11px] font-bold map-btn-white">🗺️ 案内</a><button onclick="openPostWithStore('${s.name}')" class="flex-1 bg-success text-white py-2 rounded-lg text-[11px] font-bold">💰 投稿</button></div></div>`);
             m.storeData = s;
             return m;
         });
@@ -200,7 +189,7 @@
                 count++;
                 const gUrl = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
                 
-                // 改行処理：スラッシュや読点を改行に変換して見やすく
+                // 商品情報の空白行を詰め、行間を狭く(leading-tight)設定
                 const formattedPrice = s.price.replace(/[\/／]/g, '<br>').replace(/ /g, '<br>');
 
                 listContent.innerHTML += `
@@ -210,8 +199,8 @@
                             <h3 class="text-[14px] font-bold mt-0.5 text-slate-800">${s.name}</h3>
                         </div>
                         <div class="card-body">
-                            <p class="text-[14px] font-bold text-price-red leading-relaxed">${formattedPrice}</p>
-                            ${s.note ? `<p class="text-[11px] text-slate-500 mt-2 border-l-2 border-slate-200 pl-2 italic">${s.note}</p>` : ''}
+                            <p class="text-[14px] font-bold text-price-red leading-tight">${formattedPrice}</p>
+                            ${s.note ? `<p class="text-[11px] text-slate-500 mt-1.5 border-l-2 border-slate-200 pl-2 italic leading-tight">${s.note}</p>` : ''}
                         </div>
                         <div class="card-footer">
                             <a href="${gUrl}" target="_blank" class="flex-1 bg-slate-100 text-primary font-bold py-2.5 rounded-lg text-[11px] text-center border border-slate-200">🗺️ 案内を表示</a>
