@@ -34,14 +34,14 @@
         .page { @apply absolute inset-0 flex flex-col bg-white hidden; z-index: 10; }
         .page.active { @apply flex; }
         
-        /* ヘッダー・フッター縮小に伴う余白調整 */
         #list-page, #post-page { padding-top: 105px; padding-bottom: 80px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
-        .custom-pin { display: flex; flex-direction: column; align-items: center; }
+        /* リストカード：中身に合わせて高さが可変する設計 */
+        .store-card { @apply bg-white rounded-xl p-4 shadow-sm border border-slate-100 flex flex-col h-auto min-h-fit; }
         
-        /* リストカード：スマホ向けに極限までコンパクトに */
-        .store-card { @apply bg-white rounded-xl p-3 shadow-sm border border-slate-100 flex flex-col gap-1; }
+        /* マップの案内ボタン文字色（白）を強制適用 */
+        .leaflet-popup-content a { color: white !important; text-decoration: none !important; }
     </style>
 </head>
 <body>
@@ -67,11 +67,12 @@
     </div>
 
     <div id="list-page" class="page">
-        <div class="px-4 py-2 border-b border-slate-50 flex justify-between items-center">
+        <div class="px-4 py-2 border-b border-slate-50 flex justify-between items-center bg-white">
             <h2 class="text-sm font-bold text-slate-700">📋 店舗・底値一覧</h2>
             <span id="list-count" class="text-[10px] text-slate-400"></span>
         </div>
-        <div id="store-list-content" class="flex-1 overflow-y-auto px-3 py-2 space-y-2 no-scrollbar"></div>
+        <div id="store-list-content" class="flex-1 overflow-y-auto px-3 py-3 space-y-4 no-scrollbar bg-slate-50/30">
+            </div>
     </div>
 
     <div id="post-page" class="page">
@@ -151,7 +152,7 @@
             const rows = text.split(/\r?\n/).slice(1);
             allStoreData = rows.map(row => {
                 const cols = row.split(',');
-                return { name: cols[0]?.trim(), lat: parseFloat(cols[1]), lng: parseFloat(cols[2]), category: cols[5]?.trim() || "未分類", price: cols[6] || "" };
+                return { name: cols[0]?.trim(), lat: parseFloat(cols[1]), lng: parseFloat(cols[2]), category: cols[5]?.trim() || "未分類", price: cols[6] || "", note: cols[7] || "" };
             }).filter(d => !isNaN(d.lat));
             renderUI();
             updateDatalists();
@@ -170,14 +171,13 @@
             const m = L.marker([s.lat, s.lng], { icon }).addTo(map);
             const gUrl = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
             
-            // マップ上のボタンをボタンらしく
             m.bindPopup(`
-                <div class="text-[13px] p-1 min-w-[120px]">
+                <div class="text-[13px] p-1 min-w-[140px]">
                     <b class="text-slate-800">${s.name}</b><br>
                     <span class="text-price-red font-bold text-base">${s.price}</span><br>
-                    <div class="grid grid-cols-2 gap-2 mt-2">
-                        <a href="${gUrl}" target="_blank" class="bg-primary text-white text-center py-1.5 rounded-md text-[11px] font-bold">🗺️ 案内</a>
-                        <button onclick="openPostWithStore('${s.name}')" class="bg-success text-white py-1.5 rounded-md text-[11px] font-bold">💰 投稿</button>
+                    <div class="grid grid-cols-2 gap-2 mt-3">
+                        <a href="${gUrl}" target="_blank" class="bg-primary text-white text-center py-2 rounded-md text-[11px] font-bold flex items-center justify-center">🗺️ 案内</a>
+                        <button onclick="openPostWithStore('${s.name}')" class="bg-success text-white py-2 rounded-md text-[11px] font-bold">💰 投稿</button>
                     </div>
                 </div>
             `);
@@ -208,20 +208,23 @@
                 map.addLayer(m);
                 count++;
                 const gUrl = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
+                
+                // リストカード：文字数に応じて可変、ボタンが隠れないように自動調整
                 listContent.innerHTML += `
                     <div class="store-card">
-                        <div class="flex justify-between items-start">
-                            <div class="flex-1 overflow-hidden">
-                                <span class="text-[8px] font-bold px-1.5 py-0.5 bg-slate-100 rounded text-slate-400 uppercase tracking-tighter">${s.category}</span>
-                                <h3 class="text-[13px] font-bold mt-0.5 text-slate-800 truncate">${s.name}</h3>
+                        <div class="flex justify-between items-start gap-2">
+                            <div class="flex-1">
+                                <span class="text-[9px] font-bold px-2 py-0.5 bg-slate-100 rounded text-slate-500 uppercase tracking-wide">${s.category}</span>
+                                <h3 class="text-[14px] font-bold mt-1 text-slate-800 leading-snug">${s.name}</h3>
+                                ${s.note ? `<p class="text-[11px] text-slate-500 mt-1 leading-tight italic">memo: ${s.note}</p>` : ''}
                             </div>
                             <div class="text-right shrink-0">
-                                <p class="text-[15px] font-black text-price-red">${s.price || '---'}</p>
+                                <p class="text-[17px] font-black text-price-red leading-none">${s.price || '---'}</p>
                             </div>
                         </div>
-                        <div class="flex gap-2 mt-0.5">
-                            <a href="${gUrl}" target="_blank" class="flex-1 flex items-center justify-center gap-1 bg-slate-100 text-primary font-bold py-2 rounded-lg text-[10px] border border-slate-200">🗺️ 案内を表示</a>
-                            <button onclick="openPostWithStore('${s.name}')" class="flex-1 flex items-center justify-center gap-1 bg-success text-white font-bold py-2 rounded-lg text-[10px]">💰 価格を投稿</button>
+                        <div class="flex gap-2 mt-3 pt-2 border-t border-slate-50">
+                            <a href="${gUrl}" target="_blank" class="flex-1 flex items-center justify-center gap-1 bg-slate-100 text-primary font-bold py-2.5 rounded-lg text-[11px] border border-slate-200">🗺️ 案内を表示</a>
+                            <button onclick="openPostWithStore('${s.name}')" class="flex-1 flex items-center justify-center gap-1 bg-success text-white font-bold py-2.5 rounded-lg text-[11px]">💰 価格を投稿</button>
                         </div>
                     </div>`;
             } else { map.removeLayer(m); }
@@ -264,13 +267,11 @@
 
     function updateDatalists() {
         const storeNames = [...new Set(allStoreData.map(s => s.name))].sort();
-        // 過去の投稿履歴から最新の商品名10件を取得
         const historyItems = [...new Set(allStoreData.map(s => s.price.split(' ')[0]))]
                             .filter(p => p && p.length > 1 && !defaultItems.includes(p))
                             .slice(-10);
         
         const combinedItems = [...defaultItems, ...historyItems];
-
         document.getElementById('combined-candidates').innerHTML = storeNames.map(n => `<option value="${n}">`).join('') + combinedItems.map(p => `<option value="${p}">`).join('');
         document.getElementById('store-list-candidates').innerHTML = storeNames.map(n => `<option value="${n}">`).join('');
         document.getElementById('item-list-candidates').innerHTML = combinedItems.map(p => `<option value="${p}">`).join('');
