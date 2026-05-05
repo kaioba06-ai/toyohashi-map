@@ -56,9 +56,20 @@
         .nav-item .material-symbols-outlined { font-size: 22px; }
 
         .custom-pin span { -webkit-text-stroke: 1.2px white; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3)); font-variation-settings: 'FILL' 1; display: block; }
-        .store-card { margin: 10px 12px; border-radius: 16px; border: 1px solid #e2e8f0; background: white; overflow: hidden; }
-        .card-price { padding: 10px; color: #dc2626; font-weight: bold; font-size: 13px; background: #fffbff; border-bottom: 1px solid #f1f5f9; }
-        .card-btns { padding: 8px; display: flex; gap: 6px; background: #f8fafc; }
+
+        .store-card { margin: 10px 12px; border-radius: 16px; border: 1px solid #e2e8f0; background: white; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .card-header { padding: 10px 12px 8px; border-bottom: 1px solid #f1f5f9; }
+        .card-cat-badge { display: inline-block; font-size: 9px; font-weight: bold; color: white; border-radius: 5px; padding: 2px 7px; margin-bottom: 5px; }
+        .card-name { font-weight: bold; font-size: 15px; color: #1e293b; }
+
+        .price-tags { display: flex; flex-wrap: wrap; gap: 5px; padding: 10px 10px 8px; }
+        .price-tag { display: inline-flex; align-items: center; background: #fefce8; border: 1px solid #fde68a; border-radius: 20px; padding: 4px 10px; gap: 5px; }
+        .tag-item { font-size: 11px; color: #64748b; }
+        .tag-price { font-size: 13px; font-weight: bold; color: #dc2626; }
+        .tag-note { font-size: 10px; color: #94a3b8; }
+        .no-price { padding: 8px 12px 10px; font-size: 12px; color: #94a3b8; }
+
+        .card-btns { padding: 8px; display: flex; gap: 6px; background: #f8fafc; border-top: 1px solid #f1f5f9; }
         .btn { flex: 1; padding: 8px; border-radius: 10px; border: none; font-weight: bold; font-size: 11px; cursor: pointer; text-align: center; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 4px; }
     </style>
 </head>
@@ -164,6 +175,41 @@
 
     const fixedItems = ["たまご", "牛乳", "牛こま肉（100g単価）", "豚こま肉（100g単価）", "鶏もも肉（100g単価）", "鶏むね肉（100g単価）", "ささみ（100g単価）", "鶏皮（100g単価）", "砂肝（100g単価）", "豚あいびきミンチ（100g単価）", "鶏ももミンチ（100g単価）", "鶏むねミンチ（100g単価）", "豆腐", "あぶらあげ", "うどん", "長ネギ", "キャベツ", "にんじん", "じゃがいも", "玉ねぎ"];
     const categoryColors = { "スーパー": "#34a853", "ドラッグストア": "#d93025", "JA": "#ffa502", "デフォルト": "#0061A4" };
+
+    function parsePriceEntries(priceInfo) {
+        if (!priceInfo) return [];
+        return priceInfo.split('/').map(p => {
+            const trimmed = p.trim();
+            const colonIdx = trimmed.indexOf(':');
+            if (colonIdx === -1) return null;
+            const item = trimmed.slice(0, colonIdx).trim();
+            const rest = trimmed.slice(colonIdx + 1).trim();
+            const noteMatch = rest.match(/^(.+?)\s*\((.+)\)$/);
+            if (noteMatch) return { item, price: noteMatch[1].trim(), note: noteMatch[2].trim() };
+            return { item, price: rest, note: '' };
+        }).filter(Boolean);
+    }
+
+    function formatPriceTagsHtml(priceInfo) {
+        const entries = parsePriceEntries(priceInfo);
+        if (entries.length === 0) return '';
+        return entries.map(e =>
+            `<div class="price-tag"><span class="tag-item">${e.item}</span><span class="tag-price">${e.price}</span>${e.note ? `<span class="tag-note">(${e.note})</span>` : ''}</div>`
+        ).join('');
+    }
+
+    function formatPopupPricesHtml(priceInfo) {
+        const entries = parsePriceEntries(priceInfo);
+        if (entries.length === 0) return '<div style="color:#94a3b8;font-size:11px;padding:4px 0;">価格情報なし</div>';
+        return entries.map(e =>
+            `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:3px 0;border-bottom:1px solid #f1f5f9;">
+                <span style="font-size:11px;color:#475569;">${e.item}${e.note ? `<span style="font-size:9px;color:#94a3b8;margin-left:3px;">(${e.note})</span>` : ''}</span>
+                <span style="font-size:13px;font-weight:bold;color:#dc2626;white-space:nowrap;">${e.price}</span>
+            </div>`
+        ).join('');
+    }
+
+    function getCategoryColor(cat) { return categoryColors[cat] || categoryColors["デフォルト"]; }
     let map, markers = [], allStoreData = [], currentCategory = "すべて";
 
     // 店舗登録マップ用
@@ -209,7 +255,15 @@
             const color = categoryColors[s.category] || categoryColors["デフォルト"];
             const icon = L.divIcon({ className: 'custom-icon', html: `<div class="custom-pin"><span class="material-symbols-outlined" style="color:${color};font-size:32px;">location_on</span></div>`, iconSize: [32, 32], iconAnchor: [16, 32] });
             const m = L.marker([s.lat, s.lng], { icon });
-            m.bindPopup(`<div style="min-width:140px"><b>${s.name}</b><div style="color:red;font-weight:bold;margin:4px 0;font-size:12px;">${s.price.replace(/\//g, '<br>')}</div><div style="display:flex;gap:4px;"><button onclick="openPostWithStore('${s.name}')" style="flex:1;background:#059669;color:white;border:none;padding:6px;border-radius:6px;font-size:10px;font-weight:bold;cursor:pointer;">投稿</button><a href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}" target="_blank" style="flex:1;background:#0061A4;color:white;padding:6px;border-radius:6px;font-size:10px;font-weight:bold;text-align:center;text-decoration:none;">🚗 案内</a></div></div>`);
+            const popupHtml = `<div style="min-width:180px;max-width:230px;">
+                <div style="font-weight:bold;font-size:13px;color:#1e293b;margin-bottom:6px;">${s.name}</div>
+                <div style="margin-bottom:8px;">${formatPopupPricesHtml(s.price)}</div>
+                <div style="display:flex;gap:4px;margin-top:8px;">
+                    <button onclick="openPostWithStore('${s.name}')" style="flex:1;background:#059669;color:white;border:none;padding:6px;border-radius:6px;font-size:10px;font-weight:bold;cursor:pointer;">＋ 投稿</button>
+                    <a href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}" target="_blank" style="flex:1;background:#0061A4;color:white;padding:6px;border-radius:6px;font-size:10px;font-weight:bold;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">🚗 案内</a>
+                </div>
+            </div>`;
+            m.bindPopup(popupHtml);
             m.storeData = s;
             return m;
         });
@@ -227,7 +281,18 @@
             const match = (s.name.toLowerCase().includes(query) || s.price.toLowerCase().includes(query)) && (currentCategory === "すべて" || s.category === currentCategory);
             if (match) {
                 map.addLayer(m); count++;
-                listContent.innerHTML += `<div class="store-card"><div style="padding:10px;border-bottom:1px solid #f1f5f9"><span style="font-size:9px;color:#94a3b8;font-weight:bold;">${s.category}</span><div style="font-weight:bold;font-size:14px;">${s.name}</div></div><div class="card-price">${s.price.replace(/\//g, '<br>')}</div><div class="card-btns"><button class="btn" style="background:#eff6ff;color:#0061A4;" onclick="jumpToStore('${s.name}', ${s.lat}, ${s.lng})">🗺 地図</button><a class="btn" style="background:#0061A4;color:white;" href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}" target="_blank">🚗 案内</a></div></div>`;
+                const tagsHtml = formatPriceTagsHtml(s.price);
+                listContent.innerHTML += `<div class="store-card">
+                    <div class="card-header">
+                        <span class="card-cat-badge" style="background:${getCategoryColor(s.category)}">${s.category}</span>
+                        <div class="card-name">${s.name}</div>
+                    </div>
+                    ${tagsHtml ? `<div class="price-tags">${tagsHtml}</div>` : `<div class="no-price">価格情報なし</div>`}
+                    <div class="card-btns">
+                        <button class="btn" style="background:#eff6ff;color:#0061A4;" onclick="jumpToStore('${s.name}', ${s.lat}, ${s.lng})">🗺 地図</button>
+                        <a class="btn" style="background:#0061A4;color:white;" href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}" target="_blank">🚗 案内</a>
+                    </div>
+                </div>`;
             } else { map.removeLayer(m); }
         });
         document.getElementById('list-count').innerText = `${count}件表示中`;
