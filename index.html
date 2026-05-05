@@ -9,11 +9,11 @@
     <style>
         body { font-family: sans-serif; margin: 0; padding: 0; background: #f8fafc; display: flex; justify-content: center; height: 100dvh; overflow: hidden; }
         .app-container { width: 100%; max-width: 430px; background: white; position: relative; display: flex; flex-direction: column; height: 100%; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
-        
+
         header { padding: 10px 12px; background: white; border-bottom: 1px solid #e2e8f0; z-index: 5000; flex-shrink: 0; }
         .search-bar { display: flex; align-items: center; background: #f1f5f9; border-radius: 999px; padding: 4px 12px; border: 1px solid #e2e8f0; }
         .search-bar input { border: none; background: transparent; flex: 1; padding: 6px; outline: none; font-size: 14px; }
-        
+
         .category-scroll { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 2px; scrollbar-width: none; }
         .category-scroll::-webkit-scrollbar { display: none; }
         .chip { padding: 5px 14px; border-radius: 999px; background: white; border: 1px solid #e2e8f0; font-size: 11px; font-weight: bold; white-space: nowrap; color: #64748b; cursor: pointer; }
@@ -23,22 +23,34 @@
         .page { position: absolute; inset: 0; background: white; display: none; overflow-y: auto; }
         .page.active { display: flex; flex-direction: column; }
         #map { width: 100%; height: 100%; z-index: 1; }
-        
+
         .my-location-btn { position: absolute; bottom: 15px; right: 15px; z-index: 1000; width: 44px; height: 44px; border-radius: 12px; background: white; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; }
 
-        /* 投稿フォームの余白を極限までカット */
         .post-form { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
         .input-group { display: flex; flex-direction: column; gap: 0 !important; margin-bottom: 2px; }
         .input-group label { font-size: 12px; font-weight: 800; color: #475569; margin-left: 4px; margin-bottom: 2px; line-height: 1; }
-        .post-form input { width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid #cbd5e1; background: #f8fafc; box-sizing: border-box; font-size: 15px; transition: border-color 0.2s; }
-        .post-form input:focus { border-color: #0061A4; outline: none; background: white; }
+        .post-form input, .post-form select { width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid #cbd5e1; background: #f8fafc; box-sizing: border-box; font-size: 15px; transition: border-color 0.2s; }
+        .post-form input:focus, .post-form select:focus { border-color: #0061A4; outline: none; background: white; }
+        .post-form select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; background-color: #f8fafc; cursor: pointer; }
 
-        #submit-btn { background: #0061A4; color: white; padding: 14px; border-radius: 999px; border: none; font-weight: bold; font-size: 16px; margin-top: 10px; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 97, 164, 0.2); }
+        #submit-btn, #register-btn { background: #0061A4; color: white; padding: 14px; border-radius: 999px; border: none; font-weight: bold; font-size: 16px; margin-top: 10px; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 97, 164, 0.2); }
+
+        .addr-row { display: flex; gap: 6px; }
+        .addr-row input { flex: 1; }
+        .addr-search-btn { padding: 10px 14px; border-radius: 10px; border: 1px solid #cbd5e1; background: #f1f5f9; font-size: 13px; font-weight: bold; color: #475569; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+        .addr-search-btn:active { background: #e2e8f0; }
+
+        .location-btn { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #bfdbfe; background: #eff6ff; color: #0061A4; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .location-btn:active { background: #dbeafe; }
+
+        #reg-map { width: 100%; height: 200px; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; z-index: 1; }
+        #reg-coords { font-size: 12px; color: #64748b; margin-top: 4px; text-align: center; min-height: 18px; }
+        .map-hint { font-size: 11px; color: #94a3b8; text-align: center; margin-top: 4px; }
 
         nav { display: flex; border-top: 1px solid #e2e8f0; padding: 4px 0 15px; background: white; z-index: 5000; flex-shrink: 0; }
         .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; border: none; background: none; color: #94a3b8; cursor: pointer; padding: 4px 0; }
         .nav-item.active { color: #0061A4; }
-        .nav-icon { width: 48px; height: 26px; border-radius: 14px; display: flex; align-items: center; justify-content: center; }
+        .nav-icon { width: 44px; height: 26px; border-radius: 14px; display: flex; align-items: center; justify-content: center; }
         .nav-item.active .nav-icon { background: #dbeafe; }
         .nav-text { font-size: 9px; font-weight: bold; }
         .nav-item .material-symbols-outlined { font-size: 22px; }
@@ -83,6 +95,50 @@
                 <button id="submit-btn" onclick="submitData()">投稿を送信する</button>
             </div>
         </div>
+
+        <div id="register-page" class="page">
+            <div class="post-form">
+                <h2 style="margin:0 0 5px 0; font-size: 18px;">店舗を登録</h2>
+                <p style="margin:0; font-size:12px; color:#64748b;">登録内容は確認後にマップに反映されます。</p>
+
+                <div class="input-group">
+                    <label>店舗名 *</label>
+                    <input id="reg-store-name" placeholder="例：イオン豊橋南店">
+                </div>
+
+                <div class="input-group">
+                    <label>カテゴリ *</label>
+                    <select id="reg-category">
+                        <option value="スーパー">スーパー</option>
+                        <option value="ドラッグストア">ドラッグストア</option>
+                        <option value="JA">JA</option>
+                        <option value="その他">その他</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label>住所で場所を検索</label>
+                    <div class="addr-row">
+                        <input id="reg-address" placeholder="例：愛知県豊橋市新川町2-3">
+                        <button class="addr-search-btn" onclick="geocodeAddress()">検索</button>
+                    </div>
+                </div>
+
+                <button class="location-btn" onclick="useCurrentLocationForReg()">
+                    <span class="material-symbols-outlined" style="font-size:18px;">my_location</span>
+                    現在地を使う
+                </button>
+
+                <div class="input-group">
+                    <label>地図をタップして場所を指定 *</label>
+                    <div id="reg-map"></div>
+                    <div id="reg-coords"></div>
+                    <div class="map-hint">地図をタップするとピンが立ちます</div>
+                </div>
+
+                <button id="register-btn" onclick="submitStoreRegistration()">店舗を登録する</button>
+            </div>
+        </div>
     </div>
 
     <nav>
@@ -95,6 +151,9 @@
         <button id="btn-post" class="nav-item" onclick="showPage('post-page', this)">
             <div class="nav-icon"><span class="material-symbols-outlined">add_circle</span></div><span class="nav-text">投稿</span>
         </button>
+        <button id="btn-register" class="nav-item" onclick="showPage('register-page', this)">
+            <div class="nav-icon"><span class="material-symbols-outlined">store</span></div><span class="nav-text">店舗登録</span>
+        </button>
     </nav>
 </div>
 
@@ -106,6 +165,9 @@
     const fixedItems = ["たまご", "牛乳", "牛こま肉（100g単価）", "豚こま肉（100g単価）", "鶏もも肉（100g単価）", "鶏むね肉（100g単価）", "ささみ（100g単価）", "鶏皮（100g単価）", "砂肝（100g単価）", "豚あいびきミンチ（100g単価）", "鶏ももミンチ（100g単価）", "鶏むねミンチ（100g単価）", "豆腐", "あぶらあげ", "うどん", "長ネギ", "キャベツ", "にんじん", "じゃがいも", "玉ねぎ"];
     const categoryColors = { "スーパー": "#34a853", "ドラッグストア": "#d93025", "JA": "#ffa502", "デフォルト": "#0061A4" };
     let map, markers = [], allStoreData = [], currentCategory = "すべて";
+
+    // 店舗登録マップ用
+    let regMap = null, regMarker = null, regLat = null, regLng = null;
 
     function initMap() {
         map = L.map('map', { zoomControl: false, tap: false }).setView([34.7628, 137.3817], 14);
@@ -187,7 +249,11 @@
         document.getElementById(id).classList.add('active');
         document.querySelectorAll('.nav-item').forEach(n => { n.classList.remove('active'); n.querySelector('.material-symbols-outlined').style.fontVariationSettings = "'FILL' 0"; });
         btn.classList.add('active'); btn.querySelector('.material-symbols-outlined').style.fontVariationSettings = "'FILL' 1";
-        if(id === 'map-page') setTimeout(() => map.invalidateSize(), 200);
+        if (id === 'map-page') setTimeout(() => map.invalidateSize(), 200);
+        if (id === 'register-page') {
+            initRegisterMap();
+            setTimeout(() => regMap.invalidateSize(), 200);
+        }
     }
 
     function openPostWithStore(name) { document.getElementById('post-store-name').value = name; showPage('post-page', document.getElementById('btn-post')); }
@@ -214,6 +280,86 @@
             setTimeout(() => { b.innerText = originalText; b.style.background = "#0061A4"; b.disabled = false; }, 2000);
             loadData();
         } catch (e) { alert("エラーが発生しました"); b.disabled = false; }
+    }
+
+    // --- 店舗登録 ---
+
+    function initRegisterMap() {
+        if (regMap) return;
+        regMap = L.map('reg-map', { zoomControl: false, tap: false }).setView([34.7628, 137.3817], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(regMap);
+        regMap.on('click', function(e) {
+            setRegLocation(e.latlng.lat, e.latlng.lng);
+        });
+    }
+
+    function setRegLocation(lat, lng) {
+        regLat = lat;
+        regLng = lng;
+        const latlng = L.latLng(lat, lng);
+        if (regMarker) {
+            regMarker.setLatLng(latlng);
+        } else {
+            regMarker = L.marker(latlng).addTo(regMap);
+        }
+        document.getElementById('reg-coords').innerText = `緯度: ${lat.toFixed(5)}, 経度: ${lng.toFixed(5)}`;
+    }
+
+    async function geocodeAddress() {
+        const addr = document.getElementById('reg-address').value.trim();
+        if (!addr) return alert("住所を入力してください");
+        const btn = document.querySelector('.addr-search-btn');
+        btn.textContent = "検索中..."; btn.disabled = true;
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addr)}&format=json&limit=1&accept-language=ja`);
+            const data = await res.json();
+            if (data.length === 0) { alert("住所が見つかりませんでした"); return; }
+            initRegisterMap();
+            setRegLocation(parseFloat(data[0].lat), parseFloat(data[0].lon));
+            regMap.flyTo([regLat, regLng], 17);
+        } catch (e) {
+            alert("住所の検索に失敗しました");
+        } finally {
+            btn.textContent = "検索"; btn.disabled = false;
+        }
+    }
+
+    function useCurrentLocationForReg() {
+        if (!navigator.geolocation) return alert("位置情報が使えません");
+        navigator.geolocation.getCurrentPosition(p => {
+            initRegisterMap();
+            setRegLocation(p.coords.latitude, p.coords.longitude);
+            regMap.flyTo([regLat, regLng], 17);
+        }, () => alert("位置情報の取得に失敗しました"));
+    }
+
+    async function submitStoreRegistration() {
+        const storeName = document.getElementById('reg-store-name').value.trim();
+        const category = document.getElementById('reg-category').value;
+        if (!storeName) return alert("店舗名を入力してください");
+        if (regLat === null || regLng === null) return alert("地図をタップするか、住所検索・現在地ボタンで場所を指定してください");
+
+        const b = document.getElementById('register-btn');
+        const originalText = b.innerText;
+        b.innerText = "送信中..."; b.disabled = true;
+
+        try {
+            await fetch(gasUrl, {
+                method: "POST",
+                mode: "no-cors",
+                body: JSON.stringify({ action: "registerStore", storeName, category, lat: regLat, lng: regLng })
+            });
+            document.getElementById('reg-store-name').value = "";
+            document.getElementById('reg-address').value = "";
+            document.getElementById('reg-coords').innerText = "";
+            if (regMarker) { regMap.removeLayer(regMarker); regMarker = null; }
+            regLat = null; regLng = null;
+            b.innerText = "登録を申請しました！"; b.style.background = "#059669";
+            setTimeout(() => { b.innerText = originalText; b.style.background = "#0061A4"; b.disabled = false; }, 3000);
+        } catch (e) {
+            alert("エラーが発生しました");
+            b.disabled = false;
+        }
     }
 
     function goToMyLocation() { if (navigator.geolocation) { navigator.geolocation.getCurrentPosition(p => map.flyTo([p.coords.latitude, p.coords.longitude], 16)); } }
